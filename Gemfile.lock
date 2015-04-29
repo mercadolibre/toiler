@@ -1,14 +1,14 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    aws-sdk (2.0.39)
-      aws-sdk-resources (= 2.0.39)
-    aws-sdk-core (2.0.39)
+    aws-sdk (2.0.41)
+      aws-sdk-resources (= 2.0.41)
+    aws-sdk-core (2.0.41)
       builder (~> 3.0)
       jmespath (~> 1.0)
       multi_json (~> 1.0)
-    aws-sdk-resources (2.0.39)
-      aws-sdk-core (= 2.0.39)
+    aws-sdk-resources (2.0.41)
+      aws-sdk-core (= 2.0.41)
     builder (3.2.2)
     celluloid (0.16.0)
       timers (~> 4.0.0)
