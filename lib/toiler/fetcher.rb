@@ -10,16 +10,16 @@ module Toiler
     finalizer :shutdown
 
     def initialize(queue, client = nil)
-      Toiler.logger.debug "Initializing Fetcher for queue #{queue}..."
+      debug "Initializing Fetcher for queue #{queue}..."
       @queue = Queue.new queue, client
       @wait = Toiler.options[:wait] || 20
       @batch = Toiler.worker_class_registry[queue].batch?
       async.poll_messages
-      Toiler.logger.debug "Finished initializing Fetcher for queue #{queue}"
+      debug "Finished initializing Fetcher for queue #{queue}"
     end
 
     def shutdown
-      Toiler.logger.debug "Fetcher #{queue} shutting down..."
+      debug "Fetcher #{queue} shutting down..."
       instance_variables.each { |iv| remove_instance_variable iv }
     end
 
@@ -34,7 +34,7 @@ module Toiler
         count = Toiler.manager.free_processors queue.name
         options[:max_number_of_messages] = (batch || count > FETCH_LIMIT) ? FETCH_LIMIT : count
         msgs = queue.receive_messages options
-        Toiler.logger.debug "Fetcher #{queue} retreived #{msgs.count} messages..."
+        debug "Fetcher #{queue} retreived #{msgs.count} messages..."
         next if msgs.empty?
         Toiler.manager.assign_messages queue.name, msgs
         Toiler.manager.wait_for_available_processors queue.name

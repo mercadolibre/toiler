@@ -11,21 +11,21 @@ module Toiler
     finalizer :shutdown
 
     def initialize(queue)
-      Toiler.logger.debug "Initializing Processor for queue #{queue}"
+      debug "Initializing Processor for queue #{queue}"
       @queue = queue
       @scheduler = Scheduler.supervise.actors.first
       processor_finished
-      Toiler.logger.debug "Finished initializing Processor for queue #{queue}"
+      debug "Finished initializing Processor for queue #{queue}"
     end
 
     def shutdown
-      Toiler.logger.debug "Processor for queue #{queue} shutting down..."
+      debug "Processor for queue #{queue} shutting down..."
       scheduler.terminate if scheduler && scheduler.alive?
       instance_variables.each { |iv| remove_instance_variable iv }
     end
 
     def process(queue, sqs_msg)
-      Toiler.logger.debug "Processor #{queue} begins processing..."
+      debug "Processor #{queue} begins processing..."
       exclusive do
         worker = Toiler.worker_registry[queue]
         timer = auto_visibility_timeout(queue, sqs_msg, worker.class)
@@ -40,7 +40,7 @@ module Toiler
         end
       end
       processor_finished
-      Toiler.logger.debug "Processor #{queue} finishes processing..."
+      debug "Processor #{queue} finishes processing..."
     end
 
     def processor_finished
@@ -53,7 +53,7 @@ module Toiler
       return unless worker_class.auto_visibility_timeout?
       queue_visibility_timeout = Toiler.fetcher(queue).queue.visibility_timeout
       block = lambda do |msg, visibility_timeout, q|
-        Toiler.logger.debug "Processor #{q} updating visibility_timeout..."
+        debug "Processor #{q} updating visibility_timeout..."
         msg.visibility_timeout = visibility_timeout
       end
 
