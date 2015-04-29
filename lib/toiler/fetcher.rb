@@ -19,7 +19,7 @@ module Toiler
     end
 
     def shutdown
-      debug "Fetcher #{queue} shutting down..."
+      debug "Fetcher #{queue.name} shutting down..."
       instance_variables.each { |iv| remove_instance_variable iv }
     end
 
@@ -33,8 +33,9 @@ module Toiler
       loop do
         count = Toiler.manager.free_processors queue.name
         options[:max_number_of_messages] = (batch || count > FETCH_LIMIT) ? FETCH_LIMIT : count
+        debug "Fetcher #{queue.name} retreiving messages with options: #{options.inspect}..."
         msgs = queue.receive_messages options
-        debug "Fetcher #{queue} retreived #{msgs.count} messages..."
+        debug "Fetcher #{queue.name} retreived #{msgs.count} messages..."
         next if msgs.empty?
         Toiler.manager.assign_messages queue.name, msgs
         Toiler.manager.wait_for_available_processors queue.name
