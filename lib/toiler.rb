@@ -1,14 +1,14 @@
 require 'aws-sdk'
-require 'poller/core_ext'
-require 'poller/message'
-require 'poller/queue'
-require 'poller/worker'
-require 'poller/environment_loader'
-require 'poller/logging'
-require 'poller/cli'
-require 'poller/version'
+require 'toiler/core_ext'
+require 'toiler/message'
+require 'toiler/queue'
+require 'toiler/worker'
+require 'toiler/environment_loader'
+require 'toiler/logging'
+require 'toiler/cli'
+require 'toiler/version'
 
-module Poller
+module Toiler
   @worker_registry = {}
   @worker_class_registry = {}
   @options = {
@@ -22,7 +22,7 @@ module Poller
   end
 
   def logger
-    Poller::Logging.logger
+    Toiler::Logging.logger
   end
 
   def worker_class_registry

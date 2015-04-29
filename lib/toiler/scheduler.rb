@@ -1,4 +1,4 @@
-module Poller
+module Toiler
   class Scheduler
     include Celluloid
     include Celluloid::Logger

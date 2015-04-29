@@ -1,4 +1,4 @@
-module Poller
+module Toiler
   class Queue
     attr_accessor :name, :client, :url
 

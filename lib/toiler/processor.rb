@@ -1,7 +1,7 @@
 require 'json'
-require 'poller/scheduler'
+require 'toiler/scheduler'
 
-module Poller
+module Toiler
   class Processor
     include Celluloid
     include Celluloid::Logger
@@ -27,7 +27,7 @@ module Poller
 
     def process(queue, sqs_msg)
       exclusive do
-        worker = Poller.worker_registry[queue]
+        worker = Toiler.worker_registry[queue]
         timer = auto_visibility_timeout(queue, sqs_msg, worker.class)
 
         begin
@@ -44,14 +44,14 @@ module Poller
     end
 
     def processor_finished
-      Poller.manager.processor_finished queue
+      Toiler.manager.processor_finished queue
     end
 
     private
 
     def auto_visibility_timeout(queue, sqs_msg, worker_class)
       return unless worker_class.auto_visibility_timeout?
-      queue_visibility_timeout = Poller.fetcher(queue).queue.visibility_timeout
+      queue_visibility_timeout = Toiler.fetcher(queue).queue.visibility_timeout
       block = lambda do |msg, visibility_timeout|
         msg.visibility_timeout = visibility_timeout
       end
@@ -68,7 +68,7 @@ module Poller
     end
 
     def parse_body(worker_class, sqs_msg)
-      body_parser = worker_class.get_poller_options[:parser]
+      body_parser = worker_class.get_toiler_options[:parser]
 
       case body_parser
       when :json

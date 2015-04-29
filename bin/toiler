@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 
-require 'poller'
+require 'toiler'
 
 begin
-  Poller::CLI.instance.run(ARGV)
+  Toiler::CLI.instance.run(ARGV)
 rescue => e
   raise e if $DEBUG
   STDERR.puts e.message

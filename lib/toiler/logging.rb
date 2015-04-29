@@ -1,7 +1,7 @@
 require 'time'
 require 'logger'
 
-module Poller
+module Toiler
   module Logging
     class Pretty < Logger::Formatter
       # Provide a call() method that returns the formatted message.
@@ -10,7 +10,7 @@ module Poller
       end
 
       def context
-        c = Thread.current[:poller_context]
+        c = Thread.current[:toiler_context]
         c ? " #{c}" : ''
       end
     end
@@ -18,10 +18,10 @@ module Poller
     module_function
 
     def with_context(msg)
-      Thread.current[:poller_context] = msg
+      Thread.current[:toiler_context] = msg
       yield
     ensure
-      Thread.current[:poller_context] = nil
+      Thread.current[:toiler_context] = nil
     end
 
     def initialize_logger(log_target = STDOUT)

@@ -1,8 +1,8 @@
 require 'singleton'
 require 'optparse'
-require 'poller'
+require 'toiler'
 
-module Poller
+module Toiler
   # See: https://github.com/mperham/sidekiq/blob/33f5d6b2b6c0dfaab11e5d39688cab7ebadc83ae/lib/sidekiq/cli.rb#L20
   class Shutdown < Interrupt; end
 
@@ -49,20 +49,20 @@ module Poller
     end
 
     def load_celluloid
-      fail "Celluloid cannot be required until here, or it will break Poller's daemonization" if defined?(::Celluloid) && Poller.options[:daemon]
+      fail "Celluloid cannot be required until here, or it will break Toiler's daemonization" if defined?(::Celluloid) && Toiler.options[:daemon]
 
       # Celluloid can't be loaded until after we've daemonized
       # because it spins up threads and creates locks which get
       # into a very bad state if forked.
       require 'celluloid/autostart'
-      Celluloid.logger = (Poller.options[:verbose] ? Poller.logger : nil)
-      require 'poller/supervisor'
+      Celluloid.logger = (Toiler.options[:verbose] ? Toiler.logger : nil)
+      require 'toiler/supervisor'
     end
 
     def daemonize
-      return unless Poller.options[:daemon]
+      return unless Toiler.options[:daemon]
 
-      fail ArgumentError, "You really should set a logfile if you're going to daemonize" unless Poller.options[:logfile]
+      fail ArgumentError, "You really should set a logfile if you're going to daemonize" unless Toiler.options[:logfile]
 
       files_to_reopen = []
       ObjectSpace.each_object(File) do |file|
@@ -80,7 +80,7 @@ module Poller
       end
 
       [$stdout, $stderr].each do |io|
-        File.open(Poller.options[:logfile], 'ab') do |f|
+        File.open(Toiler.options[:logfile], 'ab') do |f|
           io.reopen(f)
         end
         #io.sync = true
@@ -89,7 +89,7 @@ module Poller
     end
 
     def write_pid
-      if (path = Poller.options[:pidfile])
+      if (path = Toiler.options[:pidfile])
         File.open(path, 'w') do |f|
           f.puts Process.pid
         end
@@ -129,9 +129,9 @@ module Poller
         end
       end
 
-      @parser.banner = 'poller [options]'
+      @parser.banner = 'toiler [options]'
       @parser.on_tail '-h', '--help', 'Show help' do
-        Poller.logger.info @parser
+        Toiler.logger.info @parser
         exit 1
       end
       @parser.parse!(argv)

@@ -1,7 +1,7 @@
 require 'erb'
 require 'yaml'
 
-module Poller
+module Toiler
   class EnvironmentLoader
     attr_reader :options
 
@@ -10,7 +10,7 @@ module Poller
     end
 
     def self.load_for_rails_console
-      load(config_file: (Rails.root + 'config' + 'poller.yml'))
+      load(config_file: (Rails.root + 'config' + 'toiler.yml'))
     end
 
     def initialize(options)
@@ -21,8 +21,8 @@ module Poller
       initialize_logger
       load_rails if options[:rails]
       require_workers if options[:require]
-      Poller.options.merge!(config_file_options)
-      Poller.options.merge!(options)
+      Toiler.options.merge!(config_file_options)
+      Toiler.options.merge!(options)
       initialize_aws
     end
 
@@ -31,7 +31,7 @@ module Poller
     def config_file_options
       if (path = options[:config_file])
         unless File.exist?(path)
-          Poller.logger.warn "Config file #{path} does not exist"
+          Toiler.logger.warn "Config file #{path} does not exist"
           path = nil
         end
       end
@@ -44,16 +44,16 @@ module Poller
     def initialize_aws
       # aws-sdk tries to load the credentials from the ENV variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
       # when not explicit supplied
-      fail 'AWS Credentials needed!' if Poller.options[:aws].empty? && (ENV['AWS_ACCESS_KEY_ID'].nil? || ENV['AWS_SECRET_ACCESS_KEY'].nil?)
-      return if Poller.options[:aws].empty?
+      fail 'AWS Credentials needed!' if Toiler.options[:aws].empty? && (ENV['AWS_ACCESS_KEY_ID'].nil? || ENV['AWS_SECRET_ACCESS_KEY'].nil?)
+      return if Toiler.options[:aws].empty?
 
-      ::Aws.config[:region] = Poller.options[:aws][:region]
-      ::Aws.config[:credentials] = ::Aws::Credentials.new Poller.options[:aws][:access_key_id], Poller.options[:aws][:secret_access_key]
+      ::Aws.config[:region] = Toiler.options[:aws][:region]
+      ::Aws.config[:credentials] = ::Aws::Credentials.new Toiler.options[:aws][:access_key_id], Toiler.options[:aws][:secret_access_key]
     end
 
     def initialize_logger
-      Poller::Logging.initialize_logger(options[:logfile]) if options[:logfile]
-      Poller.logger.level = Logger::DEBUG if options[:verbose]
+      Toiler::Logging.initialize_logger(options[:logfile]) if options[:logfile]
+      Toiler.logger.level = Logger::DEBUG if options[:verbose]
     end
 
     def load_rails
@@ -66,13 +66,13 @@ module Poller
       else
         # Painful contortions, see 1791 for discussion
         require File.expand_path('config/application.rb')
-        ::Rails::Application.initializer 'poller.eager_load' do
+        ::Rails::Application.initializer 'toiler.eager_load' do
           ::Rails.application.config.eager_load = true
         end
         require File.expand_path('config/environment.rb')
       end
 
-      Poller.logger.info 'Rails environment loaded'
+      Toiler.logger.info 'Rails environment loaded'
     end
 
     def require_workers

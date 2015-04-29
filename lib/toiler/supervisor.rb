@@ -1,6 +1,6 @@
-require 'poller/manager'
+require 'toiler/manager'
 
-module Poller
+module Toiler
   class Supervisor < Celluloid::SupervisionGroup
     include Celluloid
 

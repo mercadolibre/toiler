@@ -1,7 +1,7 @@
-require 'poller/fetcher'
-require 'poller/processor'
+require 'toiler/fetcher'
+require 'toiler/processor'
 
-module Poller
+module Toiler
   class Manager
     include Celluloid
     include Celluloid::Logger
@@ -11,12 +11,12 @@ module Poller
     finalizer :shutdown
 
     def initialize
-      Poller.set_manager current_actor
+      Toiler.set_manager current_actor
       async.init
     end
 
     def init
-      @queues = Poller.worker_class_registry
+      @queues = Toiler.worker_class_registry
       @client = ::Aws::SQS::Client.new
       init_workers
       init_conditions
@@ -38,14 +38,14 @@ module Poller
     end
 
     def init_workers
-      Poller.worker_class_registry.each do |q, klass|
-        Poller.worker_registry[q] = klass.new
+      Toiler.worker_class_registry.each do |q, klass|
+        Toiler.worker_registry[q] = klass.new
       end
     end
 
     def supervise_fetchers
       queues.each do |queue, _klass|
-        Poller.set_fetcher queue, Fetcher.supervise(queue, client).actors.first
+        Toiler.set_fetcher queue, Fetcher.supervise(queue, client).actors.first
       end
     end
 
@@ -57,20 +57,20 @@ module Poller
                     else
                       Processor.supervise(q).actors.first
                     end
-        Poller.set_processor_pool q, processor
+        Toiler.set_processor_pool q, processor
       end
     end
 
     def terminate_fetchers
       queues.each do |queue, _klass|
-        fetcher = Poller.fetcher(queue)
+        fetcher = Toiler.fetcher(queue)
         fetcher.terminate if fetcher && fetcher.alive?
       end
     end
 
     def terminate_processors
       queues.each do |queue, _klass|
-        processor_pool = Poller.processor_pool(queue)
+        processor_pool = Toiler.processor_pool(queue)
         processor_pool.terminate if processor_pool && processor_pool.alive?
       end
     end
@@ -83,12 +83,12 @@ module Poller
     end
 
     def free_processors(queue)
-      return 1 unless Poller.processor_pool(queue).respond_to? :idle_size
-      Poller.processor_pool(queue).idle_size
+      return 1 unless Toiler.processor_pool(queue).respond_to? :idle_size
+      Toiler.processor_pool(queue).idle_size
     end
 
     def assign_messages(queue, messages)
-      processor_pool = Poller.processor_pool(queue)
+      processor_pool = Toiler.processor_pool(queue)
       if batch? queue
         processor_pool.async.process(queue, messages)
       else
@@ -103,7 +103,7 @@ module Poller
     end
 
     def batch?(queue)
-      Poller.worker_class_registry[queue].batch?
+      Toiler.worker_class_registry[queue].batch?
     end
   end
 end

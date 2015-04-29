@@ -1,4 +1,4 @@
-module Poller
+module Toiler
   class Message
     attr_accessor :client, :queue_url, :data
 
