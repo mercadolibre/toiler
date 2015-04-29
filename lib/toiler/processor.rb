@@ -36,7 +36,7 @@ module Toiler
           sqs_msg.delete if worker.class.auto_delete?
         ensure
           timer.cancel if timer
-          ::ActiveRecord::Base.clear_active_connections!
+          ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
         end
       end
       processor_finished
