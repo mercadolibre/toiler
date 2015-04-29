@@ -6,6 +6,7 @@ require 'poller/worker'
 require 'poller/environment_loader'
 require 'poller/logging'
 require 'poller/cli'
+require 'poller/version'
 
 module Poller
   @worker_registry = {}

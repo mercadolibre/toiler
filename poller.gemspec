@@ -1,10 +1,11 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require 'poller/version'
 
 Gem::Specification.new do |spec|
   spec.name          = 'poller'
-  spec.version       = '0.0.1'
+  spec.version       = Poller::VERSION
   spec.authors       = ['Sebastian Schepens']
   spec.email         = ['sebas.schep@hotmail.com']
   spec.description = spec.summary = 'Poller is a super efficient AWS SQS thread based message processor'
