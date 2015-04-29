@@ -16,19 +16,23 @@ module Toiler
     end
 
     def init
+      Toiler.logger.debug 'Initializing manager...'
       @queues = Toiler.worker_class_registry
       @client = ::Aws::SQS::Client.new
       init_workers
       init_conditions
       pool_processors
       supervise_fetchers
+      Toiler.logger.debug 'Finished initializing manager...'
     end
 
     def shutdown
+      Toiler.logger.debug 'Manager shutting down...'
       instance_variables.each { |iv| remove_instance_variable iv }
     end
 
     def stop
+      Toiler.logger.debug 'Manager stopping...'
       terminate_fetchers
       terminate_processors
     end
@@ -88,6 +92,7 @@ module Toiler
     end
 
     def assign_messages(queue, messages)
+      Toiler.logger.debug "Manager assigning #{messages.count} for queue #{queue}"
       processor_pool = Toiler.processor_pool(queue)
       if batch? queue
         processor_pool.async.process(queue, messages)
@@ -96,6 +101,7 @@ module Toiler
           processor_pool.async.process(queue, m)
         end
       end
+      Toiler.logger.debug "Manager finished assigning #{messages.count} for queue #{queue}"
     end
 
     def wait_for_available_processors(queue)
