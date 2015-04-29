@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['sebas.schep@hotmail.com']
   spec.description = spec.summary = 'Poller is a super efficient AWS SQS thread based message processor'
   spec.homepage      = 'https://github.com/sschepens/poller'
-  spec.license       = 'MIT'
+  spec.license       = 'LGPLv3'
 
   spec.files         = `git ls-files -z`.split("\x0")
   spec.executables << 'poller'
