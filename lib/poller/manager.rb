@@ -45,7 +45,7 @@ module Poller
 
     def supervise_fetchers
       queues.each do |queue, _klass|
-        Poller.set_fetcher queue, Fetcher.supervise(queue, client: client).actors.first
+        Poller.set_fetcher queue, Fetcher.supervise(queue, client).actors.first
       end
     end
 

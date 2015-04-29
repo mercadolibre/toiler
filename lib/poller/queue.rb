@@ -2,7 +2,7 @@ module Poller
   class Queue
     attr_accessor :name, :client, :url
 
-    def initialize(name, client: nil)
+    def initialize(name, client = nil)
       @name   = name
       @client = client || ::Aws::SQS::Client.new
       @url    = client.get_queue_url(queue_name: name).queue_url
