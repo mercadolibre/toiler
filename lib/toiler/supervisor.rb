@@ -11,8 +11,9 @@ module Toiler
     end
 
     def stop
+      return unless @manager.alive?
       @manager.stop
-      @manager.terminate if @manager.alive?
+      @manager.terminate
     end
 
     def shutdown
