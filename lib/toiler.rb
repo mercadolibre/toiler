@@ -17,15 +17,21 @@ module Toiler
 
   module_function
 
-  attr_reader :options
+  def options
+    @options
+  end
 
   def logger
     Toiler::Logging.logger
   end
 
-  attr_reader :worker_class_registry
+  def worker_class_registry
+    @worker_class_registry
+  end
 
-  attr_reader :worker_registry
+  def worker_registry
+    @worker_registry
+  end
 
   def queues
     @worker_registry.keys
