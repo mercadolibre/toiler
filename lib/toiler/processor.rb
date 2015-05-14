@@ -46,7 +46,6 @@ module Toiler
       Toiler.manager.async.processor_finished queue
     end
 
-
     def auto_visibility_timeout(queue, sqs_msg, worker_class)
       return unless worker_class.auto_visibility_timeout?
       queue_visibility_timeout = Toiler.fetcher(queue).queue.visibility_timeout

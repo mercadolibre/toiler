@@ -12,7 +12,8 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/sschepens/toiler'
   spec.license       = 'LGPLv3'
 
-  spec.files         = `git ls-files -z`.split("\x0") + `cd celluloid-task-pooledfiber && git ls-files -z`.split("\x0")
+  spec.files         = `git ls-files -z`.split("\x0")
+  spec.files += `cd celluloid-task-pooledfiber && git ls-files -z`.split("\x0").collect { |f| "celluloid-task-pooledfiber/#{f}" }
   spec.executables << 'toiler'
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ['lib', 'celluloid-task-pooledfiber/lib']
