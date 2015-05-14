@@ -1,0 +1,4 @@
+[submodule "celluloid-task-pooledfiber"]
+	path = celluloid-task-pooledfiber
+	url = git@github.com:celluloid/celluloid-task-pooledfiber.git
+	branch = 0.2.0-prerelease

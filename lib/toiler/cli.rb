@@ -1,4 +1,5 @@
 require 'singleton'
+require 'timeout'
 require 'optparse'
 require 'toiler'
 
@@ -30,6 +31,7 @@ module Toiler
       load_celluloid
 
       begin
+        require 'toiler/supervisor'
         @supervisor = Supervisor.new
 
         while (readable_io = IO.select([self_read]))
@@ -37,8 +39,14 @@ module Toiler
           handle_signal(signal)
         end
       rescue Interrupt
-        @supervisor.stop
-        exit 0
+        puts "Received interrupt, terminating actors..."
+        begin
+          Timeout.timeout(20) do
+            @supervisor.stop
+          end
+        ensure
+          exit 0
+        end
       end
     end
 
@@ -54,9 +62,10 @@ module Toiler
       # Celluloid can't be loaded until after we've daemonized
       # because it spins up threads and creates locks which get
       # into a very bad state if forked.
-      require 'celluloid/autostart'
+      require 'celluloid/current'
+      require 'celluloid/task/pooled_fiber'
+      Celluloid.task_class = Celluloid::Task::PooledFiber
       Celluloid.logger = (Toiler.options[:verbose] ? Toiler.logger : nil)
-      require 'toiler/supervisor'
     end
 
     def daemonize

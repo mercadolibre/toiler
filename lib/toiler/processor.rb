@@ -4,50 +4,48 @@ require 'toiler/scheduler'
 module Toiler
   class Processor
     include Celluloid
-    include Celluloid::Logger
+    include Celluloid::Internals::Logger
 
-    attr_accessor :queue, :scheduler
+    attr_accessor :queue
 
     finalizer :shutdown
 
     def initialize(queue)
       debug "Initializing Processor for queue #{queue}"
       @queue = queue
-      @scheduler = Scheduler.supervise.actors.first
       processor_finished
       debug "Finished initializing Processor for queue #{queue}"
     end
 
     def shutdown
       debug "Processor for queue #{queue} shutting down..."
-      scheduler.terminate if scheduler && scheduler.alive?
+      ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
       instance_variables.each { |iv| remove_instance_variable iv }
     end
 
     def process(queue, sqs_msg)
       debug "Processor #{queue} begins processing..."
-      exclusive do
-        worker = Toiler.worker_registry[queue]
-        timer = auto_visibility_timeout(queue, sqs_msg, worker.class)
+      worker = Toiler.worker_registry[queue]
+      timer = auto_visibility_timeout(queue, sqs_msg, worker.class)
 
-        begin
-          body = get_body(worker.class, sqs_msg)
-          worker.perform(sqs_msg, body)
-          sqs_msg.delete if worker.class.auto_delete?
-        ensure
-          timer.cancel if timer
-          ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
-        end
-      end
+      body = get_body(worker.class, sqs_msg)
+      worker.perform(sqs_msg, body)
+      sqs_msg.delete if worker.class.auto_delete?
+    rescue StandardError => e
+      error "Processor #{queue} faild processing msg: #{e.message}\n#{e.backtrace.join("\n")}"
+    ensure
+      timer.cancel if timer
+      ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
       processor_finished
       debug "Processor #{queue} finishes processing..."
     end
 
+    private
+
     def processor_finished
-      Toiler.manager.processor_finished queue
+      Toiler.manager.async.processor_finished queue
     end
 
-    private
 
     def auto_visibility_timeout(queue, sqs_msg, worker_class)
       return unless worker_class.auto_visibility_timeout?
@@ -57,7 +55,7 @@ module Toiler
         msg.visibility_timeout = visibility_timeout
       end
 
-      scheduler.custom_every(queue_visibility_timeout - 5, sqs_msg, queue_visibility_timeout, queue, block)
+      Toiler.scheduler(queue).custom_every(queue_visibility_timeout - 5, sqs_msg, queue_visibility_timeout, queue, block)
     end
 
     def get_body(worker_class, sqs_msg)

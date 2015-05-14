@@ -1,7 +1,7 @@
 module Toiler
   class Scheduler
     include Celluloid
-    include Celluloid::Logger
+    include Celluloid::Internals::Logger
 
     execute_block_on_receiver :custom_every
 

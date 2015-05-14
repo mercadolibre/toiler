@@ -15,7 +15,7 @@ Gem::Specification.new do |spec|
   spec.files         = `git ls-files -z`.split("\x0")
   spec.executables << 'toiler'
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
-  spec.require_paths = ['lib']
+  spec.require_paths = ['lib', 'celluloid-task-pooledfiber/lib']
 
   spec.add_development_dependency 'bundler', '~> 1.6'
   spec.add_development_dependency 'rake'
@@ -25,5 +25,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'dotenv'
 
   spec.add_dependency 'aws-sdk', '~> 2.0.21'
-  spec.add_dependency 'celluloid', '~> 0.16.0'
+  spec.add_dependency 'celluloid', '~> 0.17.pre15'
 end

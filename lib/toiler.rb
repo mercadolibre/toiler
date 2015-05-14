@@ -53,6 +53,10 @@ module Toiler
     Celluloid::Actor["processor_pool_#{queue}".to_sym] = val
   end
 
+  def scheduler(queue)
+    Celluloid::Actor["scheduler_#{queue}".to_sym]
+  end
+
   def manager
     Celluloid::Actor[:manager]
   end

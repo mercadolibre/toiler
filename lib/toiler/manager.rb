@@ -4,26 +4,30 @@ require 'toiler/processor'
 module Toiler
   class Manager
     include Celluloid
-    include Celluloid::Logger
-
-    attr_accessor :queues, :client
+    include Celluloid::Internals::Logger
 
     finalizer :shutdown
 
     def initialize
-      Toiler.set_manager current_actor
       async.init
     end
 
     def init
       debug 'Initializing manager...'
-      @queues = Toiler.worker_class_registry
-      @client = ::Aws::SQS::Client.new
       init_workers
-      init_conditions
-      pool_processors
-      supervise_fetchers
+      awake_fetchers
       debug 'Finished initializing manager...'
+    end
+
+    def awake_fetchers
+      queues.each do |q, _klass|
+        fetcher = Toiler.fetcher(q)
+        fetcher.processor_finished if fetcher && fetcher.alive? && free_processors(q) > 0
+      end
+    end
+
+    def queues
+      Toiler.worker_class_registry
     end
 
     def shutdown
@@ -31,64 +35,20 @@ module Toiler
       instance_variables.each { |iv| remove_instance_variable iv }
     end
 
-    def stop
-      debug 'Manager stopping...'
-      terminate_fetchers
-      terminate_processors
-    end
-
     def processor_finished(queue)
-      @conditions[queue].broadcast
+      fetcher = Toiler.fetcher(queue)
+      fetcher.processor_finished if fetcher && fetcher.alive?
     end
 
     def init_workers
-      Toiler.worker_class_registry.each do |q, klass|
+      queues.each do |q, klass|
         Toiler.worker_registry[q] = klass.new
       end
     end
 
-    def supervise_fetchers
-      queues.each do |queue, _klass|
-        Toiler.set_fetcher queue, Fetcher.supervise(queue, client).actors.first
-      end
-    end
-
-    def pool_processors
-      queues.each do |q, klass|
-        count = klass.concurrency
-        processor = if count > 1
-                      Processor.pool args: [q], size: count
-                    else
-                      Processor.supervise(q).actors.first
-                    end
-        Toiler.set_processor_pool q, processor
-      end
-    end
-
-    def terminate_fetchers
-      queues.each do |queue, _klass|
-        fetcher = Toiler.fetcher(queue)
-        fetcher.terminate if fetcher && fetcher.alive?
-      end
-    end
-
-    def terminate_processors
-      queues.each do |queue, _klass|
-        processor_pool = Toiler.processor_pool(queue)
-        processor_pool.terminate if processor_pool && processor_pool.alive?
-      end
-    end
-
-    def init_conditions
-      @conditions = {}
-      queues.each do |queue, _klass|
-        @conditions[queue] = Celluloid::Condition.new
-      end
-    end
-
     def free_processors(queue)
-      return 1 unless Toiler.processor_pool(queue).respond_to? :idle_size
-      Toiler.processor_pool(queue).idle_size
+      pool = Toiler.processor_pool(queue)
+      pool && pool.alive? ? pool.idle_size : 0
     end
 
     def assign_messages(queue, messages)
@@ -104,12 +64,8 @@ module Toiler
       debug "Manager finished assigning #{messages.count} for queue #{queue}"
     end
 
-    def wait_for_available_processors(queue)
-      @conditions[queue].wait if free_processors(queue) == 0
-    end
-
     def batch?(queue)
-      Toiler.worker_class_registry[queue].batch?
+      queues[queue].batch?
     end
   end
 end
