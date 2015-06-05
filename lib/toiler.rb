@@ -1,10 +1,7 @@
 require 'aws-sdk'
-require 'toiler/core_ext'
-require 'toiler/message'
-require 'toiler/queue'
+require 'toiler/utils/environment_loader'
+require 'toiler/utils/logging'
 require 'toiler/worker'
-require 'toiler/environment_loader'
-require 'toiler/logging'
 require 'toiler/cli'
 require 'toiler/version'
 
@@ -14,6 +11,8 @@ module Toiler
   @options = {
     aws: {}
   }
+  @fetchers = {}
+  @processor_pools = {}
 
   module_function
 
@@ -22,7 +21,7 @@ module Toiler
   end
 
   def logger
-    Toiler::Logging.logger
+    Toiler::Utils::Logging.logger
   end
 
   def worker_class_registry
@@ -38,39 +37,19 @@ module Toiler
   end
 
   def fetcher(queue)
-    Celluloid::Actor["fetcher_#{queue}".to_sym]
+    @fetchers["fetcher_#{queue}".to_sym]
   end
 
   def set_fetcher(queue, val)
-    Celluloid::Actor["fetcher_#{queue}".to_sym] = val
+    @fetchers["fetcher_#{queue}".to_sym] = val
   end
 
   def processor_pool(queue)
-    Celluloid::Actor["processor_pool_#{queue}".to_sym]
+    @processor_pools["processor_pool_#{queue}".to_sym]
   end
 
   def set_processor_pool(queue, val)
-    Celluloid::Actor["processor_pool_#{queue}".to_sym] = val
-  end
-
-  def scheduler(queue)
-    Celluloid::Actor["scheduler_#{queue}".to_sym]
-  end
-
-  def manager
-    Celluloid::Actor[:manager]
-  end
-
-  def set_manager(val)
-    Celluloid::Actor[:manager] = val
-  end
-
-  def timer
-    Celluloid::Actor[:timer]
-  end
-
-  def set_timer(val)
-    Celluloid::Actor[:timer] = val
+    @processor_pools["processor_pool_#{queue}".to_sym] = val
   end
 
   def default_options

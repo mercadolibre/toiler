@@ -25,10 +25,10 @@ module Toiler
 
       options = parse_cli_args(args)
 
-      EnvironmentLoader.load(options)
+      Utils::EnvironmentLoader.load(options)
       daemonize
       write_pid
-      load_celluloid
+      load_concurrent
 
       begin
         require 'toiler/supervisor'
@@ -41,7 +41,8 @@ module Toiler
       rescue Interrupt
         puts 'Received interrupt, terminating actors...'
         begin
-          Timeout.timeout(20) do
+          puts 'Waiting up to 60 seconds for actors to finish...'
+          Timeout.timeout(60) do
             @supervisor.stop
           end
         ensure
@@ -56,16 +57,20 @@ module Toiler
       fail Interrupt
     end
 
-    def load_celluloid
-      fail "Celluloid cannot be required until here, or it will break Toiler's daemonization" if defined?(::Celluloid) && Toiler.options[:daemon]
+    def load_concurrent
+      fail "Concurrent cannot be required until here, or it will break Toiler's daemonization" if defined?(::Concurrent) && Toiler.options[:daemon]
 
-      # Celluloid can't be loaded until after we've daemonized
+      # Concurrent can't be loaded until after we've daemonized
       # because it spins up threads and creates locks which get
       # into a very bad state if forked.
-      require 'celluloid/current'
-      require 'celluloid/task/pooled_fiber'
-      Celluloid.task_class = Celluloid::Task::PooledFiber
-      Celluloid.logger = (Toiler.options[:verbose] ? Toiler.logger : nil)
+      require 'concurrent-edge'
+      begin
+        require 'concurrent-ext'
+      rescue LoadError
+      end
+      Concurrent.global_logger = lambda do |level, progname, message = nil, &block|
+        Toiler.logger.log(level, message, progname, &block)
+      end if Toiler.logger
     end
 
     def daemonize
@@ -140,7 +145,7 @@ module Toiler
 
       @parser.banner = 'toiler [options]'
       @parser.on_tail '-h', '--help', 'Show help' do
-        Toiler.logger.info @parser
+        puts @parser
         exit 1
       end
       @parser.parse!(argv)
