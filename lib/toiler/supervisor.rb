@@ -33,8 +33,8 @@ module Toiler
       queues.each do |queue, klass|
         name = "processor_pool_#{queue}".to_sym
         count = klass.concurrency
-        pool = Concurrent::Actor::Utils::Pool.spawn! name, count do |balancer, index|
-          Actor::Processor.spawn name: "processor_#{queue}_#{index}".to_sym, supervise: true, args: [balancer, queue]
+        pool = Concurrent::Actor::Utils::Pool.spawn! name, count do |index|
+          Actor::Processor.spawn name: "processor_#{queue}_#{index}".to_sym, supervise: true, args: [queue]
         end
         Toiler.set_processor_pool queue, pool
       end
