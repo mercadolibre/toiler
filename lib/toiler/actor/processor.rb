@@ -9,8 +9,7 @@ module Toiler
 
       attr_accessor :queue, :worker, :fetcher, :body_parser, :on_visibility_extend
 
-      def initialize(balancer, queue)
-        super balancer
+      def initialize(queue)
         @queue = queue
         @worker = Toiler.worker_registry[queue]
         @auto_visibility_timeout = @worker.class.auto_visibility_timeout?
