@@ -4,7 +4,7 @@ require 'toiler/actor/utils/actor_message'
 
 module Toiler
   module Actor
-    class Processor < Concurrent::Actor::Utils::AbstractWorker
+    class Processor < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
       attr_accessor :queue, :worker, :fetcher, :body_parser, :on_visibility_extend
@@ -25,7 +25,7 @@ module Toiler
         Concurrent.global_io_executor
       end
 
-      def work(msg)
+      def on_message(msg)
         case msg.method
         when :process
           process(*msg.args)

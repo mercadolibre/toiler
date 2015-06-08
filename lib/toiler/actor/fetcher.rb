@@ -26,10 +26,6 @@ module Toiler
       end
 
       def on_message(msg)
-        work msg
-      end
-
-      def work(msg)
         case msg.method
         when :poll_messages
           poll_messages(*msg.args)
