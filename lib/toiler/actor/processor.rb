@@ -37,6 +37,14 @@ module Toiler
 
       private
 
+      def auto_visibility_timeout?
+        @auto_visibility_timeout
+      end
+
+      def auto_delete?
+        @auto_delete
+      end
+
       def process(visibility, sqs_msg)
         debug "Processor #{queue} begins processing..."
         timer = auto_visibility_extender(visibility, sqs_msg) if auto_visibility_timeout?
