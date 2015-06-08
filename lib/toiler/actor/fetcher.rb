@@ -43,7 +43,7 @@ module Toiler
       end
 
       def processor_finished
-        tell Utils::ActorMessage.new :poll_messages if (free_processors += 1) == 1
+        tell Utils::ActorMessage.new :poll_messages if (@free_processors += 1) == 1
       end
 
       def poll_messages
@@ -77,7 +77,7 @@ module Toiler
         messages = [messages] if batch?
         messages.each do |m|
           processor_pool.tell Utils::ActorMessage.new(:process, [visibility_timeout, m])
-          free_processors -= 1
+          @free_processors -= 1
         end
         debug "Fetcher finished assigning #{messages.count} for queue #{queue}"
       end
