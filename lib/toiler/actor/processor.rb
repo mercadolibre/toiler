@@ -47,9 +47,10 @@ module Toiler
 
       def process(visibility, sqs_msg)
         debug "Processor #{queue} begins processing..."
-        timer = auto_visibility_extender(visibility, sqs_msg) if auto_visibility_timeout?
+        body = get_body(sqs_msg)
+        timer = auto_visibility_extender(visibility, sqs_msg, body) if auto_visibility_timeout?
 
-        worker.perform sqs_msg, get_body(sqs_msg)
+        worker.perform sqs_msg, body
         sqs_msg.delete if auto_delete?
       rescue StandardError => e
         error "Processor #{queue} faild processing msg: #{e.message}\n#{e.backtrace.join("\n")}"
@@ -64,10 +65,10 @@ module Toiler
         fetcher.tell Utils::ActorMessage.new :processor_finished
       end
 
-      def auto_visibility_extender(queue_visibility, sqs_msg)
+      def auto_visibility_extender(queue_visibility, sqs_msg, body)
         Concurrent::TimerTask.execute execution_interval: queue_visibility - 5, timeout_interval: queue_visibility - 5 do
           sqs_msg.visibility_timeout = queue_visibility
-          on_visibility_extend.call sqs_msg if on_visibility_extend.respond_to? :call
+          on_visibility_extend.call sqs_msg, body if on_visibility_extend.respond_to? :call
         end
       end
 
