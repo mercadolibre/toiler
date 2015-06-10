@@ -34,6 +34,7 @@ module Toiler
         else
           pass
         end
+      rescue
       end
 
       private
