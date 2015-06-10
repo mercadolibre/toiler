@@ -53,8 +53,11 @@ module Toiler
 
     private
 
-    def handle_signal(_signal)
-      fail Interrupt
+    def handle_signal(signal)
+      case signal
+      when 'INT', 'TERM'
+        fail Interrupt
+      end
     end
 
     def load_concurrent
