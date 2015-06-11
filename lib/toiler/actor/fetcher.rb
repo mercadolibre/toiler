@@ -22,7 +22,7 @@ module Toiler
       end
 
       def default_executor
-        Concurrent.global_fast_executor
+        Concurrent.global_io_executor
       end
 
       def on_message(msg)
