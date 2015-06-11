@@ -50,15 +50,22 @@ module Toiler
         body = get_body(sqs_msg)
         timer = auto_visibility_extender(visibility, sqs_msg, body) if auto_visibility_timeout?
 
+        debug "Worker #{queue} starts performing..."
         worker.perform sqs_msg, body
-        sqs_msg.delete if auto_delete?
+        debug "Worker #{queue} finishes performing..."
+        if auto_delete?
+          debug "Processor #{queue} starts deleting sqs message due to auto_delete..."
+          sqs_msg.delete
+          debug "Processor #{queue} finished deleting sqs message due to auto_delete..."
+        end
       rescue StandardError => e
         error "Processor #{queue} faild processing msg: #{e.message}\n#{e.backtrace.join("\n")}"
       ensure
+        debug "Processor #{queue} starts cleanup after perform..."
         timer.shutdown if timer
         ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
         processor_finished
-        debug "Processor #{queue} finishes processing..."
+        debug "Processor #{queue} finished cleanup after perform..."
       end
 
       def processor_finished
