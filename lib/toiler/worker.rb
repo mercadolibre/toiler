@@ -4,6 +4,30 @@ module Toiler
       base.extend(ClassMethods)
     end
 
+    def log(level, message)
+      Toiler.logger.log(level, message, self.class)
+    end
+
+    def error(msg)
+      log Logger::Severity::ERROR, msg
+    end
+
+    def info(msg)
+      log Logger::Severity::INFO, msg
+    end
+
+    def debug(msg)
+      log Logger::Severity::DEBUG, msg
+    end
+
+    def warn(msg)
+      log Logger::Severity::WARN, msg
+    end
+
+    def fatal(msg)
+      log Logger::Severity::FATAL, msg
+    end
+
     module ClassMethods
       def toiler_options(options)
         if @toiler_options

@@ -27,12 +27,13 @@ module Toiler
       def on_message(msg)
         case msg.method
         when :process
-          process(*msg.args)
+          return process(*msg.args)
         else
           pass
         end
       rescue StandardError => e
         error "Processor failed processing message, discarding: #{e.message}\n#{e.backtrace.join("\n")}"
+        raise e
       end
 
       private
@@ -60,6 +61,7 @@ module Toiler
         end
       rescue StandardError => e
         error "Processor #{queue} faild processing msg: #{e.message}\n#{e.backtrace.join("\n")}"
+        raise e
       ensure
         debug "Processor #{queue} starts cleanup after perform..."
         timer.shutdown if timer

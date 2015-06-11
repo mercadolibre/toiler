@@ -57,6 +57,7 @@ module Toiler
 
         # AWS limits the batch size by 10
         processors = free_processors.value
+        return if processors < 1
         options[:max_number_of_messages] = (batch? || processors > FETCH_LIMIT) ? FETCH_LIMIT : processors
         debug "Fetcher #{queue.name} retreiving messages with options: #{options.inspect}..."
         msgs = queue.receive_messages options
