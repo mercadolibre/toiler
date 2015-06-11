@@ -44,6 +44,7 @@ module Toiler
       end
 
       def processor_finished
+        debug "Fetcher #{queue.name} received processor finished signal..."
         @free_processors.increment
         reschedule_poll
       end
@@ -62,12 +63,15 @@ module Toiler
         debug "Fetcher #{queue.name} retreived #{msgs.count} messages..."
 
         assign_messages msgs unless msgs.empty?
-
+      ensure
         reschedule_poll
       end
 
       def reschedule_poll
-        tell Utils::ActorMessage.new :poll_messages if free_processors.value > 0
+        if free_processors.value > 0
+          debug "Fetcher #{queue.name} rescheduling polling due to free_processors being #{free_processors.value}..."
+          tell Utils::ActorMessage.new :poll_messages
+        end
       end
 
       def processor_pool
