@@ -43,12 +43,10 @@ module Toiler
       end
 
       def initialize_aws
-        # aws-sdk tries to load the credentials from the ENV variables: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
-        # when not explicit supplied
-        fail 'AWS Credentials needed!' if Toiler.options[:aws].empty? && (ENV['AWS_ACCESS_KEY_ID'].nil? || ENV['AWS_SECRET_ACCESS_KEY'].nil?)
         return if Toiler.options[:aws].empty?
 
-        ::Aws.config[:region] = Toiler.options[:aws][:region]
+        ::Aws.config[:region] = Toiler.options[:aws][:region] if Toiler.options[:aws][:region].nil?
+        return if Toiler.options[:aws][:access_key_id].nil? || Toiler.options[:aws][:secret_access_key].nil?
         ::Aws.config[:credentials] = ::Aws::Credentials.new Toiler.options[:aws][:access_key_id], Toiler.options[:aws][:secret_access_key]
       end
 
