@@ -45,7 +45,7 @@ module Toiler
       def initialize_aws
         return if Toiler.options[:aws].empty?
 
-        ::Aws.config[:region] = Toiler.options[:aws][:region] if Toiler.options[:aws][:region].nil?
+        ::Aws.config[:region] = Toiler.options[:aws][:region] unless Toiler.options[:aws][:region].nil?
         return if Toiler.options[:aws][:access_key_id].nil? || Toiler.options[:aws][:secret_access_key].nil?
         ::Aws.config[:credentials] = ::Aws::Credentials.new Toiler.options[:aws][:access_key_id], Toiler.options[:aws][:secret_access_key]
       end
