@@ -91,7 +91,7 @@ module Toiler
       files_to_reopen.each do |file|
         begin
           file.reopen file.path, 'a+'
-          # file.sync = true
+          file.sync = true
         rescue ::Exception
         end
       end
@@ -100,7 +100,7 @@ module Toiler
         File.open(Toiler.options[:logfile], 'ab') do |f|
           io.reopen(f)
         end
-        # io.sync = true
+        io.sync = true
       end
       $stdin.reopen('/dev/null')
     end
