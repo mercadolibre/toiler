@@ -29,6 +29,19 @@ module Toiler
     end
 
     module ClassMethods
+      def perform_async(body, options = {})
+        options ||= {}
+        options[:message_attributes] ||= {}
+        options[:message_attributes]['toiler_class'] = {
+          string_value: self.to_s,
+          data_type: 'String'
+        }
+
+        options[:message_body] = body
+
+        Toiler::Client.queues(@toiler_options[:queue]).send_message(options)
+      end
+
       def toiler_options(options)
         if @toiler_options
           @toiler_options = @toiler_options.merge options
