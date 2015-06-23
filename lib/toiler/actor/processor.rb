@@ -11,7 +11,7 @@ module Toiler
 
       def initialize(queue)
         @queue = queue
-        @worker = Toiler.worker_registry[queue]
+        @worker = Toiler.worker_class_registry[queue].new
         @auto_visibility_timeout = @worker.class.auto_visibility_timeout?
         @auto_delete = @worker.class.auto_delete?
         @body_parser = @worker.class.get_toiler_options[:parser]

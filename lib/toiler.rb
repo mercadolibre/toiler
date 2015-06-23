@@ -6,7 +6,6 @@ require 'toiler/cli'
 require 'toiler/version'
 
 module Toiler
-  @worker_registry = {}
   @worker_class_registry = {}
   @options = {
     aws: {}
@@ -28,12 +27,8 @@ module Toiler
     @worker_class_registry
   end
 
-  def worker_registry
-    @worker_registry
-  end
-
   def queues
-    @worker_registry.keys
+    @worker_class_registry.keys
   end
 
   def fetcher(queue)

@@ -7,19 +7,12 @@ module Toiler
 
     def initialize
       @client = ::Aws::SQS::Client.new
-      init_workers
       spawn_fetchers
       spawn_processors
     end
 
     def queues
       Toiler.worker_class_registry
-    end
-
-    def init_workers
-      queues.each do |q, klass|
-        Toiler.worker_registry[q] = klass.new
-      end
     end
 
     def spawn_fetchers
