@@ -7,6 +7,7 @@ a different approach at loadbalancing and uses long-polling.
 ###Concurrency
 Toiler allows to specify the amount of processors (threads) that should be spawned for each queue.
 Instead of [shoryuken's](https://github.com/phstc/shoryuken) loadbalancing  approach, Toiler delegates this work to the kernel scheduling threads.
+Because Toiler uses threads to provide concurrency, **each thread instatiates a new worker**, as it should be expected, so please **use class variables to store shared variables like clients**.
 
 ###Long-Polling
 A Fetcher thread is spawned for each queue.
@@ -19,6 +20,9 @@ Workers can configure a parser Class or Proc to parse an SQS message body before
 
 ###Batches
 Toiler allows a Worker to be able to receive a batch of messages instead of a single one.
+
+###Auto Visibility Extension
+Toiler has the ability to automatically extend the visibility timeout of and SQS message to prevent the message from re-entering the queue if processing of such message is taking longer than the queue's visibility timeout.
 
 ##Instalation
 
@@ -51,6 +55,8 @@ class MyWorker
   # toiler_options parser: MultiJson
   # toiler_options auto_visibility_timeout: true
   # toiler_options batch: true
+
+  @@client = ConnectionClient.new #Example connection client that should be shared across all instances of MyWorker
 
   def perform(sqs_msg, body)
     puts body
