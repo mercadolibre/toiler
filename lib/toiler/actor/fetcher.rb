@@ -22,13 +22,15 @@ module Toiler
       end
 
       def default_executor
-        Concurrent.global_io_executor
+        Concurrent.global_fast_executor
       end
 
       def on_message(msg)
         case msg.method
-        when :poll_messages
-          poll_messages(*msg.args)
+        when :assign_messages
+          assign_messages(*msg.args)
+        when :schedule_poll
+          schedule_poll(*msg.args)
         when :processor_finished
           processor_finished(*msg.args)
         else
@@ -45,33 +47,35 @@ module Toiler
 
       def processor_finished
         debug "Fetcher #{queue.name} received processor finished signal..."
-        @free_processors.increment
-        reschedule_poll
+        free_processors.increment
+        schedule_poll
       end
 
-      def poll_messages
-        options = {
-          message_attribute_names: %w(All),
-          wait_time_seconds: wait
-        }
-
-        # AWS limits the batch size by 10
+      def max_messages
         processors = free_processors.value
-        return if processors < 1
-        options[:max_number_of_messages] = (batch? || processors > FETCH_LIMIT) ? FETCH_LIMIT : processors
-        debug "Fetcher #{queue.name} retreiving messages with options: #{options.inspect}..."
-        msgs = queue.receive_messages options
+        return FETCH_LIMIT if batch? || processors > FETCH_LIMIT
+        processors
+      end
+
+      def poll_messages(max_number_of_messages, wait_time_seconds)
+        debug "Fetcher #{queue.name} retreiving messages with maximum: #{max_number_of_messages}..."
+        msgs = queue.receive_messages message_attribute_names: %w(All),
+                                      wait_time_seconds: wait_time_seconds,
+                                      max_number_of_messages: max_number_of_messages
         debug "Fetcher #{queue.name} retreived #{msgs.count} messages..."
 
-        assign_messages msgs unless msgs.empty?
+        tell Utils::ActorMessage.new :assign_messages, [msgs] unless msgs.empty?
+      rescue StandardError
       ensure
-        reschedule_poll
+        tell Utils::ActorMessage.new :schedule_poll
       end
 
-      def reschedule_poll
-        if free_processors.value > 0
-          debug "Fetcher #{queue.name} rescheduling polling due to free_processors being #{free_processors.value}..."
-          tell Utils::ActorMessage.new :poll_messages
+      def schedule_poll
+        processors = max_messages
+        return unless processors > 0
+        debug "Fetcher #{queue.name} scheduling polling due to free_processors being #{processors}..."
+        Concurrent::Edge::Future.execute do
+          poll_messages(processors, wait)
         end
       end
 
@@ -84,7 +88,7 @@ module Toiler
         messages = [messages] if batch?
         messages.each do |m|
           processor_pool.tell Utils::ActorMessage.new(:process, [visibility_timeout, m])
-          @free_processors.decrement
+          free_processors.decrement
         end
         debug "Fetcher finished assigning #{messages.count} for queue #{queue.name}"
       end
