@@ -7,6 +7,7 @@ a different approach at loadbalancing and uses long-polling.
 ###Concurrency
 Toiler allows to specify the amount of processors (threads) that should be spawned for each queue.
 Instead of [shoryuken's](https://github.com/phstc/shoryuken) loadbalancing  approach, Toiler delegates this work to the kernel scheduling threads.
+
 Because Toiler uses threads to provide concurrency, **each thread instatiates a new worker**, as it should be expected, so please **use class variables to store shared variables like clients**.
 
 ###Long-Polling
