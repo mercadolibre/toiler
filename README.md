@@ -57,9 +57,17 @@ class MyWorker
   # toiler_options auto_visibility_timeout: true
   # toiler_options batch: true
 
-  @@client = ConnectionClient.new #Example connection client that should be shared across all instances of MyWorker
+  #Example connection client that should be shared across all instances of MyWorker
+  @@client = ConnectionClient.new
+    
+  def initialize
+    @last_message = nil
+  end
 
   def perform(sqs_msg, body)
+    #Workers are thread safe, yay!
+    #Each worker instance is assured to be processing only one message at a time
+    @last_message = sqs_msg 
     puts body
   end
 end
