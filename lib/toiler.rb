@@ -13,38 +13,33 @@ module Toiler
   @fetchers = {}
   @processor_pools = {}
 
-  module_function
+  attr_reader :worker_class_registry, :options, :fetchers, :processor_pools
+  module_function :worker_class_registry, :options, :fetchers, :processor_pools
 
-  def options
-    @options
-  end
+  module_function
 
   def logger
     Toiler::Utils::Logging.logger
   end
 
-  def worker_class_registry
-    @worker_class_registry
-  end
-
   def queues
-    @worker_class_registry.keys
+    worker_class_registry.keys
   end
 
   def fetcher(queue)
-    @fetchers["fetcher_#{queue}".to_sym]
+    fetchers["fetcher_#{queue}".to_sym]
   end
 
   def set_fetcher(queue, val)
-    @fetchers["fetcher_#{queue}".to_sym] = val
+    fetchers["fetcher_#{queue}".to_sym] = val
   end
 
   def processor_pool(queue)
-    @processor_pools["processor_pool_#{queue}".to_sym]
+    processor_pools["processor_pool_#{queue}".to_sym]
   end
 
   def set_processor_pool(queue, val)
-    @processor_pools["processor_pool_#{queue}".to_sym] = val
+    processor_pools["processor_pool_#{queue}".to_sym] = val
   end
 
   def default_options
