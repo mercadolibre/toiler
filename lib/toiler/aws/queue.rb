@@ -2,6 +2,8 @@ require 'toiler/aws/message'
 
 module Toiler
   module Aws
+    # SQS Queue abstraction
+    # Provides methods for querying and acting on a SQS queue
     class Queue
       attr_accessor :name, :client, :url
 
@@ -19,15 +21,17 @@ module Toiler
       end
 
       def delete_messages(options)
-        client.delete_message_batch(options.merge(queue_url: url))
+        client.delete_message_batch options.merge queue_url: url
       end
 
       def send_message(options)
-        client.send_message(sanitize_message_body(options.merge(queue_url: url)))
+        client.send_message sanitize_message_body options.merge queue_url: url
       end
 
       def send_messages(options)
-        client.send_message_batch(sanitize_message_body(options.merge(queue_url: url)))
+        client.send_message_batch(
+          sanitize_message_body options.merge queue_url: url
+        )
       end
 
       def receive_messages(options)
@@ -46,7 +50,7 @@ module Toiler
           if body.is_a?(Hash)
             m[:message_body] = JSON.dump(body)
           elsif !body.is_a? String
-            fail ArgumentError, "The message body must be a String and you passed a #{body.class}"
+            fail ArgumentError, "Body must be a String, found #{body.class}"
           end
         end
 
