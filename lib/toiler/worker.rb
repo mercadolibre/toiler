@@ -1,7 +1,9 @@
 module Toiler
+  # Toiler's Worker behaviour
   module Worker
     def self.included(base)
       base.extend(ClassMethods)
+      base.class_variable_set(:@@toiler_options, Toiler.default_options)
     end
 
     def log(level, message)
@@ -28,38 +30,32 @@ module Toiler
       log Logger::Severity::FATAL, msg
     end
 
+    # Class methods for Workers
     module ClassMethods
-      def toiler_options(options)
-        if @toiler_options
-          @toiler_options = @toiler_options.merge options
-        else
-          @toiler_options = Toiler.default_options.merge options
-        end
+      def toiler_options(options = {})
+        return class_variable_get(:@@toiler_options) if options.empty?
         Toiler.worker_class_registry[options[:queue]] = self if options[:queue]
-      end
-
-      def get_toiler_options
-        @toiler_options
+        class_variable_get(:@@toiler_options).merge! options
       end
 
       def batch?
-        @toiler_options[:batch]
+        class_variable_get(:@@toiler_options)[:batch]
       end
 
       def concurrency
-        @toiler_options[:concurrency]
+        class_variable_get(:@@toiler_options)[:concurrency]
       end
 
       def queue
-        @toiler_options[:queue]
+        class_variable_get(:@@toiler_options)[:queue]
       end
 
       def auto_visibility_timeout?
-        @toiler_options[:auto_visibility_timeout]
+        class_variable_get(:@@toiler_options)[:auto_visibility_timeout]
       end
 
       def auto_delete?
-        @toiler_options[:auto_delete]
+        class_variable_get(:@@toiler_options)[:auto_delete]
       end
     end
   end

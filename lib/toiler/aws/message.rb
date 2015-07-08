@@ -1,5 +1,7 @@
 module Toiler
   module Aws
+    # SQS Message abstraction
+    # Provides methods for querying and acting on a SQS message
     class Message
       attr_accessor :client, :queue_url, :data
 
@@ -18,7 +20,7 @@ module Toiler
 
       def change_visibility(options)
         client.change_message_visibility(
-          options.merge(queue_url: queue_url, receipt_handle: data.receipt_handle)
+          options.merge(queue_url: queue_url, receipt_handle: receipt_handle)
         )
       end
 

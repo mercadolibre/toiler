@@ -1,22 +1,20 @@
 require 'json'
 require 'toiler/actor/utils/actor_logging'
-require 'toiler/actor/utils/actor_message'
 
 module Toiler
   module Actor
+    # Responsible for processing sqs messages and notifying Fetcher when done
     class Processor < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      attr_accessor :queue, :worker, :fetcher, :body_parser, :on_visibility_extend
+      attr_accessor :queue, :worker, :fetcher, :body_parser,
+                    :extend_callback
 
       def initialize(queue)
         @queue = queue
         @worker = Toiler.worker_class_registry[queue].new
-        @auto_visibility_timeout = @worker.class.auto_visibility_timeout?
-        @auto_delete = @worker.class.auto_delete?
-        @body_parser = @worker.class.get_toiler_options[:parser]
-        @on_visibility_extend = @worker.class.get_toiler_options[:on_visibility_extend]
         @fetcher = Toiler.fetcher queue
+        init_options
         processor_finished
       end
 
@@ -25,18 +23,22 @@ module Toiler
       end
 
       def on_message(msg)
-        case msg.method
-        when :process
-          return process(*msg.args)
-        else
-          pass
-        end
+        method, *args = msg
+        send(method, *args)
       rescue StandardError => e
-        error "Processor failed processing message, discarding: #{e.message}\n#{e.backtrace.join("\n")}"
+        error "Processor #{queue} failed processing, reason: #{e.class}"
         raise e
       end
 
       private
+
+      def init_options
+        @auto_visibility_timeout = @worker.class.auto_visibility_timeout?
+        @auto_delete = @worker.class.auto_delete?
+        toiler_options = @worker.class.toiler_options
+        @body_parser = toiler_options[:parser]
+        @extend_callback = toiler_options[:on_visibility_extend]
+      end
 
       def auto_visibility_timeout?
         @auto_visibility_timeout
@@ -49,20 +51,17 @@ module Toiler
       def process(visibility, sqs_msg)
         debug "Processor #{queue} begins processing..."
         body = get_body(sqs_msg)
-        timer = auto_visibility_extender(visibility, sqs_msg, body) if auto_visibility_timeout?
+        timer = visibility_extender visibility, sqs_msg, body, &extend_callback
 
         debug "Worker #{queue} starts performing..."
         worker.perform sqs_msg, body
         debug "Worker #{queue} finishes performing..."
-        if auto_delete?
-          debug "Processor #{queue} starts deleting sqs message due to auto_delete..."
-          sqs_msg.delete
-          debug "Processor #{queue} finished deleting sqs message due to auto_delete..."
-        end
-      rescue StandardError => e
-        error "Processor #{queue} faild processing msg: #{e.message}\n#{e.backtrace.join("\n")}"
-        raise e
+        sqs_msg.delete if auto_delete?
       ensure
+        process_cleanup timer
+      end
+
+      def process_cleanup(timer)
         debug "Processor #{queue} starts cleanup after perform..."
         timer.shutdown if timer
         ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
@@ -71,13 +70,16 @@ module Toiler
       end
 
       def processor_finished
-        fetcher.tell Utils::ActorMessage.new :processor_finished
+        fetcher.tell :processor_finished
       end
 
-      def auto_visibility_extender(queue_visibility, sqs_msg, body)
-        Concurrent::TimerTask.execute execution_interval: queue_visibility - 5, timeout_interval: queue_visibility - 5 do
+      def visibility_extender(queue_visibility, sqs_msg, body)
+        return unless auto_visibility_timeout?
+        interval = queue_visibility - 5
+        Concurrent::TimerTask.execute execution_interval: interval,
+                                      timeout_interval: interval do
           sqs_msg.visibility_timeout = queue_visibility
-          on_visibility_extend.call sqs_msg, body if on_visibility_extend.respond_to? :call
+          yield sqs_msg, body if block_given?
         end
       end
 
@@ -91,18 +93,13 @@ module Toiler
 
       def parse_body(sqs_msg)
         case body_parser
-        when :json
-          JSON.parse sqs_msg.body
-        when Proc
-          body_parser.call sqs_msg
-        when :text, nil
-          sqs_msg.body
-        else
-          body_parser.load sqs_msg.body if body_parser.respond_to? :load # i.e. Oj.load(...) or MultiJson.load(...)
+        when :json then JSON.parse sqs_msg.body
+        when Proc then body_parser.call sqs_msg
+        when :text, nil then sqs_msg.body
+        else body_parser.load sqs_msg.body
         end
       rescue => e
-        error "Error parsing the message body: #{e.message}\nbody_parser: #{body_parser}\nsqs_msg.body: #{sqs_msg.body}"
-        nil
+        raise "Error parsing the message body: #{e.message}"
       end
     end
   end

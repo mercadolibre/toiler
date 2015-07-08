@@ -3,6 +3,7 @@ require 'yaml'
 
 module Toiler
   module Utils
+    # Takes care of loading componentes to get toiler ready to run
     class EnvironmentLoader
       attr_reader :options
 
@@ -39,15 +40,21 @@ module Toiler
 
         return {} unless path
 
-        deep_symbolize_keys YAML.load(ERB.new(IO.read(path)).result)
+        deep_symbolize_keys YAML.load(ERB.new(File.read(path)).result)
       end
 
       def initialize_aws
         return if Toiler.options[:aws].empty?
+        ::Aws.config[:region] = Toiler.options[:aws][:region]
+        set_aws_credentials
+      end
 
-        ::Aws.config[:region] = Toiler.options[:aws][:region] unless Toiler.options[:aws][:region].nil?
-        return if Toiler.options[:aws][:access_key_id].nil? || Toiler.options[:aws][:secret_access_key].nil?
-        ::Aws.config[:credentials] = ::Aws::Credentials.new Toiler.options[:aws][:access_key_id], Toiler.options[:aws][:secret_access_key]
+      def set_aws_credentials
+        return unless Toiler.options[:aws][:access_key_id]
+        ::Aws.config[:credentials] = ::Aws::Credentials.new(
+          Toiler.options[:aws][:access_key_id],
+          Toiler.options[:aws][:secret_access_key]
+        )
       end
 
       def initialize_logger
@@ -56,22 +63,26 @@ module Toiler
       end
 
       def load_rails
-        # Adapted from: https://github.com/mperham/sidekiq/blob/master/lib/sidekiq/cli.rb
-
         require 'rails'
         if ::Rails::VERSION::MAJOR < 4
-          require File.expand_path('config/environment.rb')
-          ::Rails.application.eager_load!
+          load_rails_old
         else
-          # Painful contortions, see 1791 for discussion
-          require File.expand_path('config/application.rb')
-          ::Rails::Application.initializer 'toiler.eager_load' do
-            ::Rails.application.config.eager_load = true
-          end
-          require File.expand_path('config/environment.rb')
+          load_rails_new
         end
-
         Toiler.logger.info 'Rails environment loaded'
+      end
+
+      def load_rails_old
+        require File.expand_path('config/environment.rb')
+        ::Rails.application.eager_load!
+      end
+
+      def load_rails_new
+        require File.expand_path('config/application.rb')
+        ::Rails::Application.initializer 'toiler.eager_load' do
+          ::Rails.application.config.eager_load = true
+        end
+        require File.expand_path('config/environment.rb')
       end
 
       def require_workers
@@ -80,7 +91,12 @@ module Toiler
 
       def deep_symbolize_keys(h)
         h.each_with_object({}) do |(key, value), result|
-          result[(key.to_sym rescue key) || key] = value.is_a?(Hash) ? deep_symbolize_keys(value) : value
+          k = key.respond_to?(:to_sym) ? key.to_sym : key
+          result[k] = if value.is_a? Hash
+                        deep_symbolize_keys value
+                      else
+                        value
+                      end
         end
       end
     end

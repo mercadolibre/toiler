@@ -1,6 +1,7 @@
 module Toiler
   module Actor
     module Utils
+      # Provides helper methods for logging
       module ActorLogging
         def error(msg)
           log Logger::Severity::ERROR, self.class, msg
