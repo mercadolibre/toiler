@@ -61,7 +61,7 @@ module Toiler
       def poll_messages
         poll_future.on_completion! do |_success, msgs, _reason|
           scheduled.make_false
-          tell :assign_messages, msgs unless msgs.nil? || msgs.empty?
+          tell [:assign_messages, msgs] unless msgs.nil? || msgs.empty?
           schedule_poll
         end
       end
@@ -79,7 +79,7 @@ module Toiler
       def assign_messages(messages)
         messages = [messages] if batch?
         messages.each do |m|
-          processor_pool.tell :process, visibility_timeout, m
+          processor_pool.tell [:process, visibility_timeout, m]
           free_processors.decrement
         end
         debug "Fetcher #{queue.name} assigned #{messages.count} messages"

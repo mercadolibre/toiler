@@ -35,7 +35,7 @@ module Toiler
       def init_options
         @auto_visibility_timeout = @worker.class.auto_visibility_timeout?
         @auto_delete = @worker.class.auto_delete?
-        toiler_options = @worker.class.get_toiler_options
+        toiler_options = @worker.class.toiler_options
         @body_parser = toiler_options[:parser]
         @extend_callback = toiler_options[:on_visibility_extend]
       end

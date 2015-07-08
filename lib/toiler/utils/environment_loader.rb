@@ -40,7 +40,7 @@ module Toiler
 
         return {} unless path
 
-        deep_symbolize_keys YAML.load(ERB.new(IO.read(path)).result)
+        deep_symbolize_keys YAML.load(ERB.new(File.read(path)).result)
       end
 
       def initialize_aws
@@ -91,7 +91,7 @@ module Toiler
 
       def deep_symbolize_keys(h)
         h.each_with_object({}) do |(key, value), result|
-          k = key.respond_to? :to_sym ? key.to_sym : key
+          k = key.respond_to?(:to_sym) ? key.to_sym : key
           result[k] = if value.is_a? Hash
                         deep_symbolize_keys value
                       else

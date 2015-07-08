@@ -1,10 +1,12 @@
 require 'aws-sdk'
 require 'toiler/utils/environment_loader'
 require 'toiler/utils/logging'
+require 'toiler/utils/argument_parser'
 require 'toiler/worker'
 require 'toiler/cli'
 require 'toiler/version'
 
+# Main module
 module Toiler
   @worker_class_registry = {}
   @options = {

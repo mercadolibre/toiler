@@ -2,6 +2,7 @@ require 'toiler/actor/fetcher'
 require 'toiler/actor/processor'
 
 module Toiler
+  # Starts and supevises Toiler's actors
   class Supervisor
     attr_accessor :client
 
@@ -17,7 +18,8 @@ module Toiler
 
     def spawn_fetchers
       queues.each do |queue, _klass|
-        fetcher = Actor::Fetcher.spawn! name: "fetcher_#{queue}".to_sym, supervise: true, args: [queue, client]
+        fetcher = Actor::Fetcher.spawn! name: "fetcher_#{queue}".to_sym,
+                                        supervise: true, args: [queue, client]
         Toiler.set_fetcher queue, fetcher
       end
     end
@@ -27,7 +29,8 @@ module Toiler
         name = "processor_pool_#{queue}".to_sym
         count = klass.concurrency
         pool = Concurrent::Actor::Utils::Pool.spawn! name, count do |index|
-          Actor::Processor.spawn name: "processor_#{queue}_#{index}".to_sym, supervise: true, args: [queue]
+          Actor::Processor.spawn name: "processor_#{queue}_#{index}".to_sym,
+                                 supervise: true, args: [queue]
         end
         Toiler.set_processor_pool queue, pool
       end
@@ -39,16 +42,14 @@ module Toiler
     end
 
     def terminate_fetchers
-      queues.each do |queue, _klass|
-        fetcher = Toiler.fetcher queue
-        fetcher.ask! :terminate!
+      queues.map do |queue, _klass|
+        Toiler.fetcher(queue).ask :terminate!
       end
     end
 
     def terminate_processors
       queues.each do |queue, _klass|
-        processor_pool = Toiler.processor_pool queue
-        processor_pool.ask! :terminate!
+        Toiler.processor_pool(queue).ask :terminate!
       end
     end
   end

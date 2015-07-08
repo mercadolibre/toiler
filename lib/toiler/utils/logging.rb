@@ -7,8 +7,11 @@ module Toiler
     module Logging
       # Toiler's default log formatter
       class Pretty < Logger::Formatter
-        def call(severity, time, program_name, message)
-          "#{time.utc.iso8601} Pid:#{Process.pid} Actor:#{program_name} Level:#{severity}: #{message.respond_to?(:gsub) ? message.gsub("\n", "\n\t") : message}\n"
+        def call(sev, time, progname, msg)
+          formatted = msg.respond_to?(:gsub) ? msg.gsub("\n", "\n\t") : msg
+          time = time.utc.iso8601
+          pid = Process.pid
+          "#{time} Pid:#{pid} Actor:#{progname} Level:#{sev}: #{formatted}\n"
         end
       end
 
