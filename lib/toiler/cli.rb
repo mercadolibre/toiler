@@ -73,11 +73,6 @@ module Toiler
     def load_concurrent
       fail 'Concurrent should not be required now' if defined?(::Concurrent)
       require 'concurrent-edge'
-      begin
-        require 'concurrent-ext'
-      rescue LoadError
-        puts 'Consider using concurrent-ext for production'
-      end
       Concurrent.global_logger = lambda do |level, progname, msg = nil, &block|
         Toiler.logger.log(level, msg, progname, &block)
       end if Toiler.logger
