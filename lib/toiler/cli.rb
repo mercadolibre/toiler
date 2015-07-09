@@ -11,10 +11,12 @@ module Toiler
   class CLI
     include Singleton
 
-    def run(args)
-      self_read, self_write = IO.pipe
+    attr_accessor :supervisor
 
-      trap_signals(self_write)
+    def run(args)
+      @self_read, @self_write = IO.pipe
+
+      trap_signals
       options = Utils::ArgumentParser.parse(args)
       Utils::EnvironmentLoader.load(options)
       daemonize
@@ -22,19 +24,18 @@ module Toiler
       load_concurrent
       start_supervisor
 
-      handle_stop(self_read)
+      handle_stop
     end
 
     private
 
-    def handle_stop(self_read)
-      while (readable_io = IO.select([self_read]))
+    def handle_stop
+      while (readable_io = IO.select([@self_read]))
         handle_signal(readable_io.first[0].gets.strip)
       end
     rescue Interrupt
       puts 'Waiting up to 60 seconds for actors to finish...'
-      @supervisor.stop
-      shutdown_pools
+      supervisor.ask(:terminate).wait(60)
     ensure
       exit 0
     end
@@ -47,15 +48,15 @@ module Toiler
     end
 
     def start_supervisor
-      require 'toiler/supervisor'
-      @supervisor = Supervisor.new
+      require 'toiler/actor/supervisor'
+      @supervisor = Supervisor.spawn! :supervisor
     end
 
-    def trap_signals(self_write)
+    def trap_signals
       %w(INT TERM USR1 USR2 TTIN).each do |sig|
         begin
           trap sig do
-            self_write.puts(sig)
+            @self_write.puts(sig)
           end
         rescue ArgumentError
           puts "System does not support signal #{sig}"
