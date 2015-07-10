@@ -49,7 +49,7 @@ module Toiler
 
     def start_supervisor
       require 'toiler/actor/supervisor'
-      @supervisor = Supervisor.spawn! :supervisor
+      @supervisor = Actor::Supervisor.spawn! :supervisor
     end
 
     def trap_signals
