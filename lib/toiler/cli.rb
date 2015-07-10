@@ -35,7 +35,7 @@ module Toiler
       end
     rescue Interrupt
       puts 'Waiting up to 60 seconds for actors to finish...'
-      supervisor.ask(:terminate).wait(60)
+      supervisor.ask(:terminate!).wait(60)
     ensure
       exit 0
     end
