@@ -11,7 +11,7 @@ module Toiler
           formatted = msg.respond_to?(:gsub) ? msg.gsub("\n", "\n\t") : msg
           time = time.utc.iso8601
           pid = Process.pid
-          "#{time} Pid:#{pid} Actor:#{progname} Level:#{sev}: #{formatted}\n"
+          "#{time} Pid:#{pid} Level:#{sev}: #{formatted}\n"
         end
       end
 

@@ -4,23 +4,23 @@ module Toiler
       # Provides helper methods for logging
       module ActorLogging
         def error(msg)
-          log Logger::Severity::ERROR, self.class, msg
+          log Logger::Severity::ERROR,  msg
         end
 
         def info(msg)
-          log Logger::Severity::INFO, self.class, msg
+          log Logger::Severity::INFO, msg
         end
 
         def debug(msg)
-          log Logger::Severity::DEBUG, self.class, msg
+          log Logger::Severity::DEBUG,  msg
         end
 
         def warn(msg)
-          log Logger::Severity::WARN, self.class, msg
+          log Logger::Severity::WARN, smsg
         end
 
         def fatal(msg)
-          log Logger::Severity::FATAL, self.class, msg
+          log Logger::Severity::FATAL,  msg
         end
       end
     end
