@@ -68,9 +68,10 @@ module Toiler
       return unless Toiler.logger
       Toiler.logger.info "-------------------\nReceived QUIT, dumping threads:"
       Thread.list.each do |t|
-        Toiler.logger "[thread:#{t.object_id}] #{t.backtrace.join("\n[thread:#{t.object_id}] ")}"
+        id = t.object_id
+        Toiler.logger.info "[thread:#{id}] #{t.backtrace.join("\n[thread:#{id}] ")}"
       end
-      Toiler.logger '-------------------'
+      Toiler.logger.info '-------------------'
     end
 
     def handle_signal(signal)
