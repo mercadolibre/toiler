@@ -7,7 +7,7 @@ module Toiler
     class Fetcher < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      FETCH_LIMIT = 10.freeze
+      FETCH_LIMIT = 10
 
       attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
                     :scheduled
@@ -24,7 +24,7 @@ module Toiler
       end
 
       def default_executor
-        Concurrent.global_fast_executor
+        Concurrent.global_io_executor
       end
 
       def on_message(msg)
@@ -59,10 +59,10 @@ module Toiler
       end
 
       def poll_messages
-        poll_future.on_completion! do |_success, msgs, _reason|
-          scheduled.make_false
+        poll_future.on_completion! do |_success, msgs|
           tell [:assign_messages, msgs] unless msgs.nil? || msgs.empty?
-          schedule_poll
+          scheduled.make_false
+          tell :schedule_poll
         end
       end
 

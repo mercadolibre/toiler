@@ -53,7 +53,7 @@ module Toiler
     end
 
     def trap_signals
-      %w(INT TERM USR1 USR2 TTIN).each do |sig|
+      %w(INT TERM QUIT USR1 USR2 TTIN).each do |sig|
         begin
           trap sig do
             @self_write.puts(sig)
@@ -64,8 +64,19 @@ module Toiler
       end
     end
 
+    def print_stacktraces
+      return unless Toiler.logger
+      Toiler.logger.info "-------------------\nReceived QUIT, dumping threads:"
+      Thread.list.each do |t|
+        Toiler.logger "[thread:#{t.object_id}] #{t.backtrace.join("\n[thread:#{t.object_id}] ")}"
+      end
+      Toiler.logger '-------------------'
+    end
+
     def handle_signal(signal)
       case signal
+      when 'QUIT'
+        print_stacktraces
       when 'INT', 'TERM'
         fail Interrupt
       end

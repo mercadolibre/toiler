@@ -78,8 +78,12 @@ module Toiler
         interval = queue_visibility - 5
         Concurrent::TimerTask.execute execution_interval: interval,
                                       timeout_interval: interval do
-          sqs_msg.visibility_timeout = queue_visibility
-          yield sqs_msg, body if block_given?
+          begin
+            sqs_msg.visibility_timeout = queue_visibility
+            yield sqs_msg, body if block_given?
+          rescue StandardError => e
+            error "Processor #{queue} failed to extend visibility of message: #{e.message}\n#{e.backtrace.join("\n")}"
+          end
         end
       end
 
