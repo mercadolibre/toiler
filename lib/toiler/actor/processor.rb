@@ -26,7 +26,7 @@ module Toiler
         method, *args = msg
         send(method, *args)
       rescue StandardError => e
-        error "Processor #{queue} failed processing, reason: #{e.class}"
+        error "Processor #{queue} failed processing, reason: #{e.class}\n#{e.backtrace.join("\n")}"
         raise e
       end
 
