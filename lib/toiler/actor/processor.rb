@@ -75,7 +75,7 @@ module Toiler
 
       def visibility_extender(queue_visibility, sqs_msg, body)
         return unless auto_visibility_timeout?
-        interval = queue_visibility - 5
+        interval = [1,queue_visibility/3].max
         Concurrent::TimerTask.execute execution_interval: interval,
                                       timeout_interval: interval do
           begin
