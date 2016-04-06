@@ -1,5 +1,6 @@
 require 'json'
 require 'toiler/actor/utils/actor_logging'
+require 'toiler/actor/visibility_extender'
 
 module Toiler
   module Actor
@@ -8,13 +9,16 @@ module Toiler
       include Utils::ActorLogging
 
       attr_accessor :queue, :worker, :fetcher, :body_parser,
-                    :extend_callback
+                    :extend_callback, :extender
 
       def initialize(queue)
         @queue = queue
         @worker = Toiler.worker_class_registry[queue].new
         @fetcher = Toiler.fetcher queue
         init_options
+        @extender = VisibilityExtender.spawn! name: "visibility_extender_#{queue}".to_sym,
+                                              supervise: true,
+                                              args: [@queue.visibility_timeout, extend_callback]
         processor_finished
       end
 
@@ -52,6 +56,7 @@ module Toiler
         debug "Processor #{queue} begins processing..."
         body = get_body(sqs_msg)
         timer = visibility_extender visibility, sqs_msg, body, &extend_callback
+        extender.tell [:start, sqs_msg, body]
 
         debug "Worker #{queue} starts performing..."
         worker.perform sqs_msg, body
@@ -64,6 +69,7 @@ module Toiler
       def process_cleanup(timer)
         debug "Processor #{queue} starts cleanup after perform..."
         timer.shutdown if timer
+        extender.ask!(:stop)
         ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
         processor_finished
         debug "Processor #{queue} finished cleanup after perform..."
