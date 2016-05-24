@@ -26,5 +26,5 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'aws-sdk', '~> 2.2', '>= 2.2.10'
   spec.add_dependency 'concurrent-ruby', '~> 1.0', '>= 1.0.0'
-  spec.add_dependency 'concurrent-ruby-edge', '~> 0.2.0'
+  spec.add_dependency 'concurrent-ruby-edge', '~> 0.2.0', '>= 0.2.0'
 end
