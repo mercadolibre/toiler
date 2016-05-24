@@ -21,6 +21,7 @@ module Toiler
         @visibility_timeout = @queue.visibility_timeout
         @scheduled = Concurrent::AtomicBoolean.new
         @executing = Concurrent::AtomicBoolean.new
+        @polling = Concurrent::AtomicBoolean.new
         debug "Finished initializing Fetcher for queue #{queue}"
       end
 
@@ -29,14 +30,21 @@ module Toiler
       end
 
       def on_message(msg)
+        executing.make_true
         method, *args = msg
         send(method, *args)
       rescue StandardError => e
         error "Fetcher #{queue.name} raised exception #{e.class}"
+      ensure
+        executing.make_false
       end
 
       def executing?
         executing.value
+      end
+
+      def polling?
+        polling.value
       end
 
       def scheduled?
@@ -53,6 +61,11 @@ module Toiler
         @batch
       end
 
+      def processor_started
+        debug "Fetcher #{queue.name} received processor started signal..."
+        free_processors.decrement
+      end
+
       def processor_finished
         debug "Fetcher #{queue.name} received processor finished signal..."
         free_processors.increment
@@ -65,19 +78,22 @@ module Toiler
 
       def poll_future
         Concurrent.future do
-          @executing.make_true
           queue.receive_messages message_attribute_names: %w(All),
                                  wait_time_seconds: wait,
                                  max_number_of_messages: max_messages
-          @executing.make_false
         end
       end
 
       def poll_messages
-        poll_future.on_completion! do |_success, msgs|
-          tell [:assign_messages, msgs] unless msgs.nil? || msgs.empty?
+        polling.make_true
+        poll_future.on_completion! do |success, msgs, error|
+          polling.make_false
           scheduled.make_false
-          tell :schedule_poll
+          if success && !msgs.nil? && !msgs.empty?
+            tell [:assign_messages, msgs]
+          else
+            tell :schedule_poll
+          end
         end
       end
 
@@ -95,9 +111,9 @@ module Toiler
         messages = [messages] if batch?
         messages.each do |m|
           processor_pool.tell [:process, visibility_timeout, m]
-          free_processors.decrement
         end
         debug "Fetcher #{queue.name} assigned #{messages.count} messages"
+        tell :schedule_poll
       end
     end
   end

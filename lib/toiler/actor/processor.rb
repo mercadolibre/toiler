@@ -54,9 +54,7 @@ module Toiler
       end
 
       def process(visibility, sqs_msg)
-        executing.make_true
-        @thread = Thread.current
-        debug "Processor #{queue} begins processing..."
+        process_init
         body = get_body(sqs_msg)
         timer = visibility_extender visibility, sqs_msg, body, &extend_callback
 
@@ -66,8 +64,13 @@ module Toiler
         sqs_msg.delete if auto_delete?
       ensure
         process_cleanup timer
-        executing.make_false
-        @thread = nil
+      end
+
+      def process_init
+        processor_started
+        @executing.make_true
+        @thread = Thread.current
+        debug "Processor #{queue} begins processing..."
       end
 
       def process_cleanup(timer)
@@ -75,11 +78,17 @@ module Toiler
         timer.shutdown if timer
         ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
         processor_finished
+        @executing.make_false
+        @thread = nil
         debug "Processor #{queue} finished cleanup after perform..."
       end
 
       def processor_finished
         fetcher.tell :processor_finished
+      end
+
+      def processor_started
+        fetcher.tell :processor_started
       end
 
       def visibility_extender(queue_visibility, sqs_msg, body)
