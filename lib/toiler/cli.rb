@@ -89,7 +89,7 @@ module Toiler
         message += "\n[processor_pool:#{processor_pool.name}] [workers:#{processors.count}] [busy:#{busy_processors}]"
         processors.each do |processor|
           thread = processor.thread
-          thread_id = thread.nil? ? nil : thread.object_id
+          thread_id = thread.nil? ? "nil" : thread.object_id
           message += "\n[processor:#{processor.name}] [executing:#{processor.executing?}] [thread:#{thread_id}]"
           message += " Stack:\n" + thread.backtrace.join("\n\t") unless thread.nil?
         end
