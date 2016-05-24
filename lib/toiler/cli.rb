@@ -74,10 +74,28 @@ module Toiler
       Toiler.logger.info '-------------------'
     end
 
+    def print_status
+      return unless Toiler.logger
+      Toiler.logger.info "-------------------\nReceived QUIT, dumping status:"
+      Toiler.queues.each do |queue|
+        fetcher = Toiler.fetcher(queue).send(:core).send(:context)
+        processor_pool = Toiler.processor_pool(queue).send(:core).send(:context)
+        processors = processor_pool.instance_variable_get(:@workers).collect{|w| w.send(:core).send(:context)}
+        busy_processors = processors.count{|pr| pr.executing?}
+        Toiler.logger.info "[fetcher:#{fetcher.name}] [executing:#{fetcher.executing?}] [scheduled:#{fetcher.scheduled?}] [free_processors:#{fetcher.get_free_processors}]"
+        Toiler.logger.info "[processor_pool:#{processor_pool.name}] [workers:#{processors.count}] [busy:#{busy_processors}]"
+        processors.each do |processor|
+          Toiler.logger.info "[processor:#{processor.name}] [executing:#{processor.executing?}] [thread:#{processor.thread.object_id}]"
+        end
+      end
+      Toiler.logger.info '-------------------'
+    end
+
     def handle_signal(signal)
       case signal
       when 'QUIT'
         print_stacktraces
+        print_status
       when 'INT', 'TERM'
         fail Interrupt
       end
