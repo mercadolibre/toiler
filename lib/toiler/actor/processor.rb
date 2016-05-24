@@ -8,12 +8,14 @@ module Toiler
       include Utils::ActorLogging
 
       attr_accessor :queue, :worker, :fetcher, :body_parser,
-                    :extend_callback
+                    :extend_callback, :executing, :thread
 
       def initialize(queue)
         @queue = queue
         @worker = Toiler.worker_class_registry[queue].new
         @fetcher = Toiler.fetcher queue
+        @executing = Concurrent::AtomicBoolean.new
+        @thread = nil
         init_options
         processor_finished
       end
@@ -27,7 +29,10 @@ module Toiler
         send(method, *args)
       rescue StandardError => e
         error "Processor #{queue} failed processing, reason: #{e.class}\n#{e.backtrace.join("\n")}"
-        raise e
+      end
+
+      def executing?
+        executing.value
       end
 
       private
@@ -49,6 +54,8 @@ module Toiler
       end
 
       def process(visibility, sqs_msg)
+        executing.make_true
+        @thread = Thread.current
         debug "Processor #{queue} begins processing..."
         body = get_body(sqs_msg)
         timer = visibility_extender visibility, sqs_msg, body, &extend_callback
@@ -59,6 +66,8 @@ module Toiler
         sqs_msg.delete if auto_delete?
       ensure
         process_cleanup timer
+        executing.make_false
+        @thread = nil
       end
 
       def process_cleanup(timer)
