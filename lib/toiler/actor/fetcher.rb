@@ -10,7 +10,7 @@ module Toiler
       FETCH_LIMIT = 10
 
       attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
-                    :scheduled
+                    :scheduled, :executing
 
       def initialize(queue, client)
         debug "Initializing Fetcher for queue #{queue}..."
@@ -20,6 +20,7 @@ module Toiler
         @batch = Toiler.worker_class_registry[queue].batch?
         @visibility_timeout = @queue.visibility_timeout
         @scheduled = Concurrent::AtomicBoolean.new
+        @executing = Concurrent::AtomicBoolean.new
         debug "Finished initializing Fetcher for queue #{queue}"
       end
 
@@ -32,6 +33,18 @@ module Toiler
         send(method, *args)
       rescue StandardError => e
         error "Fetcher #{queue.name} raised exception #{e.class}"
+      end
+
+      def executing?
+        executing.value
+      end
+
+      def scheduled?
+        scheduled.value
+      end
+
+      def get_free_processors
+        free_processors.value
       end
 
       private
@@ -52,9 +65,11 @@ module Toiler
 
       def poll_future
         Concurrent.future do
+          @executing.make_true
           queue.receive_messages message_attribute_names: %w(All),
                                  wait_time_seconds: wait,
                                  max_number_of_messages: max_messages
+          @executing.make_false
         end
       end
 
