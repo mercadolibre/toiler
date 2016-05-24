@@ -10,7 +10,7 @@ module Toiler
       FETCH_LIMIT = 10
 
       attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
-                    :scheduled, :executing
+                    :scheduled, :executing, :polling
 
       def initialize(queue, client)
         debug "Initializing Fetcher for queue #{queue}..."
@@ -34,7 +34,7 @@ module Toiler
         method, *args = msg
         send(method, *args)
       rescue StandardError => e
-        error "Fetcher #{queue.name} raised exception #{e.class}"
+        error "Fetcher #{queue.name} raised exception #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       ensure
         executing.make_false
       end

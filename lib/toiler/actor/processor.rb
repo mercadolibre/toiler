@@ -28,7 +28,7 @@ module Toiler
         method, *args = msg
         send(method, *args)
       rescue StandardError => e
-        error "Processor #{queue} failed processing, reason: #{e.class}\n#{e.backtrace.join("\n")}"
+        error "Processor #{queue} failed processing, reason: #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       end
 
       def executing?

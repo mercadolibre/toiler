@@ -90,8 +90,8 @@ module Toiler
         processors.each do |processor|
           thread = processor.thread
           thread_id = thread.nil? ? nil : thread.object_id
-          message += "\n[processor:#{processor.name}] [executing:#{processor.executing?}] [thread:#{thread_id}] Stack:"
-          message += thread.backtrace.join("\n\t") unless thread.nil?
+          message += "\n[processor:#{processor.name}] [executing:#{processor.executing?}] [thread:#{thread_id}]"
+          message += " Stack:\n" + thread.backtrace.join("\n\t") unless thread.nil?
         end
         Toiler.logger.info message
       end
