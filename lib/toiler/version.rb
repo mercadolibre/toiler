@@ -1,4 +1,4 @@
 # Toiler Version
 module Toiler
-  VERSION = '0.3.1.beta4'.freeze
+  VERSION = '0.3.2'.freeze
 end
