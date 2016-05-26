@@ -10,7 +10,7 @@ module Toiler
       FETCH_LIMIT = 10
 
       attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
-                    :scheduled
+                    :scheduled, :executing, :polling
 
       def initialize(queue, client)
         debug "Initializing Fetcher for queue #{queue}..."
@@ -20,6 +20,8 @@ module Toiler
         @batch = Toiler.worker_class_registry[queue].batch?
         @visibility_timeout = @queue.visibility_timeout
         @scheduled = Concurrent::AtomicBoolean.new
+        @executing = Concurrent::AtomicBoolean.new
+        @polling = Concurrent::AtomicBoolean.new
         debug "Finished initializing Fetcher for queue #{queue}"
       end
 
@@ -28,10 +30,29 @@ module Toiler
       end
 
       def on_message(msg)
+        executing.make_true
         method, *args = msg
         send(method, *args)
       rescue StandardError => e
-        error "Fetcher #{queue.name} raised exception #{e.class}"
+        error "Fetcher #{queue.name} raised exception #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+      ensure
+        executing.make_false
+      end
+
+      def executing?
+        executing.value
+      end
+
+      def polling?
+        polling.value
+      end
+
+      def scheduled?
+        scheduled.value
+      end
+
+      def get_free_processors
+        free_processors.value
       end
 
       private
@@ -59,10 +80,15 @@ module Toiler
       end
 
       def poll_messages
-        poll_future.on_completion! do |_success, msgs|
-          tell [:assign_messages, msgs] unless msgs.nil? || msgs.empty?
+        polling.make_true
+        poll_future.on_completion! do |success, msgs, error|
+          polling.make_false
           scheduled.make_false
-          tell :schedule_poll
+          if success && !msgs.nil? && !msgs.empty?
+            tell [:assign_messages, msgs]
+          else
+            tell :schedule_poll
+          end
         end
       end
 
@@ -83,6 +109,7 @@ module Toiler
           free_processors.decrement
         end
         debug "Fetcher #{queue.name} assigned #{messages.count} messages"
+        tell :schedule_poll
       end
     end
   end

@@ -8,12 +8,14 @@ module Toiler
       include Utils::ActorLogging
 
       attr_accessor :queue, :worker, :fetcher, :body_parser,
-                    :extend_callback
+                    :extend_callback, :executing, :thread
 
       def initialize(queue)
         @queue = queue
         @worker = Toiler.worker_class_registry[queue].new
         @fetcher = Toiler.fetcher queue
+        @executing = Concurrent::AtomicBoolean.new
+        @thread = nil
         init_options
         processor_finished
       end
@@ -26,8 +28,11 @@ module Toiler
         method, *args = msg
         send(method, *args)
       rescue StandardError => e
-        error "Processor #{queue} failed processing, reason: #{e.class}\n#{e.backtrace.join("\n")}"
-        raise e
+        error "Processor #{queue} failed processing, reason: #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+      end
+
+      def executing?
+        executing.value
       end
 
       private
@@ -49,7 +54,7 @@ module Toiler
       end
 
       def process(visibility, sqs_msg)
-        debug "Processor #{queue} begins processing..."
+        process_init
         body = get_body(sqs_msg)
         timer = visibility_extender visibility, sqs_msg, body, &extend_callback
 
@@ -61,11 +66,19 @@ module Toiler
         process_cleanup timer
       end
 
+      def process_init
+        @executing.make_true
+        @thread = Thread.current
+        debug "Processor #{queue} begins processing..."
+      end
+
       def process_cleanup(timer)
         debug "Processor #{queue} starts cleanup after perform..."
         timer.shutdown if timer
         ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
         processor_finished
+        @executing.make_false
+        @thread = nil
         debug "Processor #{queue} finished cleanup after perform..."
       end
 

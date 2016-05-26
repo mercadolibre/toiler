@@ -66,10 +66,34 @@ module Toiler
 
     def print_stacktraces
       return unless Toiler.logger
-      Toiler.logger.info "-------------------\nReceived QUIT, dumping threads:"
+      Toiler.logger.info "-------------------"
+      Toiler.logger.info "Received QUIT, dumping threads:"
       Thread.list.each do |t|
         id = t.object_id
         Toiler.logger.info "[thread:#{id}] #{t.backtrace.join("\n[thread:#{id}] ")}"
+      end
+      Toiler.logger.info '-------------------'
+    end
+
+    def print_status
+      return unless Toiler.logger
+      Toiler.logger.info "-------------------"
+      Toiler.logger.info "Received QUIT, dumping status:"
+      Toiler.queues.each do |queue|
+        fetcher = Toiler.fetcher(queue).send(:core).send(:context)
+        processor_pool = Toiler.processor_pool(queue).send(:core).send(:context)
+        processors = processor_pool.instance_variable_get(:@workers).collect{|w| w.send(:core).send(:context)}
+        busy_processors = processors.count{|pr| pr.executing?}
+        message = "Status for [queue:#{queue}]:"
+        message += "\n[fetcher:#{fetcher.name}] [executing:#{fetcher.executing?}] [polling:#{fetcher.polling?}] [scheduled:#{fetcher.scheduled?}] [free_processors:#{fetcher.get_free_processors}]"
+        message += "\n[processor_pool:#{processor_pool.name}] [workers:#{processors.count}] [busy:#{busy_processors}]"
+        processors.each do |processor|
+          thread = processor.thread
+          thread_id = thread.nil? ? "nil" : thread.object_id
+          message += "\n[processor:#{processor.name}] [executing:#{processor.executing?}] [thread:#{thread_id}]"
+          message += " Stack:\n" + thread.backtrace.join("\n\t") unless thread.nil?
+        end
+        Toiler.logger.info message
       end
       Toiler.logger.info '-------------------'
     end
@@ -78,6 +102,7 @@ module Toiler
       case signal
       when 'QUIT'
         print_stacktraces
+        print_status
       when 'INT', 'TERM'
         fail Interrupt
       end
