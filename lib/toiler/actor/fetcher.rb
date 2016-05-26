@@ -80,7 +80,7 @@ module Toiler
       end
 
       def poll_messages
-        polling.make_true
+        return unless polling.make_true
         poll_future.on_completion! do |success, msgs, error|
           polling.make_false
           scheduled.make_false
