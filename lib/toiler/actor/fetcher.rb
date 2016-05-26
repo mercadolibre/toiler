@@ -61,11 +61,6 @@ module Toiler
         @batch
       end
 
-      def processor_started
-        debug "Fetcher #{queue.name} received processor started signal..."
-        free_processors.decrement
-      end
-
       def processor_finished
         debug "Fetcher #{queue.name} received processor finished signal..."
         free_processors.increment
@@ -111,6 +106,7 @@ module Toiler
         messages = [messages] if batch?
         messages.each do |m|
           processor_pool.tell [:process, visibility_timeout, m]
+          free_processors.decrement
         end
         debug "Fetcher #{queue.name} assigned #{messages.count} messages"
         tell :schedule_poll
