@@ -34,8 +34,13 @@ module Toiler
         handle_signal(readable_io.first[0].gets.strip)
       end
     rescue Interrupt
-      puts 'Waiting up to 60 seconds for actors to finish...'
-      supervisor.ask(:terminate!).wait(60)
+      Toiler.logger.info 'Received Interrupt, Waiting up to 60 seconds for actors to finish...'
+      success = supervisor.ask(:terminate!).wait(60)
+      if success
+        Toiler.logger.info 'Supervisor successfully terminated'
+      else
+        Toiler.logger.info 'Timeout waiting dor Supervisor to terminate'
+      end
     ensure
       exit 0
     end
