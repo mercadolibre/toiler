@@ -7,12 +7,12 @@ module Toiler
     class Processor < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      attr_accessor :queue, :worker, :fetcher, :body_parser,
+      attr_accessor :queue, :worker_class, :fetcher, :body_parser,
                     :extend_callback, :executing, :thread
 
       def initialize(queue)
         @queue = queue
-        @worker = Toiler.worker_class_registry[queue].new
+        @worker_class = Toiler.worker_class_registry[queue]
         @fetcher = Toiler.fetcher queue
         @executing = Concurrent::AtomicBoolean.new
         @thread = nil
@@ -38,9 +38,9 @@ module Toiler
       private
 
       def init_options
-        @auto_visibility_timeout = @worker.class.auto_visibility_timeout?
-        @auto_delete = @worker.class.auto_delete?
-        toiler_options = @worker.class.toiler_options
+        @auto_visibility_timeout = @worker_class.auto_visibility_timeout?
+        @auto_delete = @worker_class.auto_delete?
+        toiler_options = @worker_class.toiler_options
         @body_parser = toiler_options[:parser]
         @extend_callback = toiler_options[:on_visibility_extend]
       end
@@ -55,6 +55,7 @@ module Toiler
 
       def process(visibility, sqs_msg)
         process_init
+        worker = @worker_class.new
         body = get_body(sqs_msg)
         timer = visibility_extender visibility, sqs_msg, body, &extend_callback
 
