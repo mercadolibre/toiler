@@ -44,14 +44,10 @@ module Toiler
       end
 
       def initialize_aws
-        puts 'Initializing AWS'
-        puts Toiler.options
         return if Toiler.options[:aws].empty?
         ::Aws.config[:region] = Toiler.options[:aws][:region]
         ::Aws.config[:endpoint] = Toiler.options[:aws][:endpoint] if Toiler.options[:aws][:endpoint]
         set_aws_credentials
-        puts Aws.config[:endpoint]
-        #raise 'Finished Initializing'
       end
 
       def set_aws_credentials

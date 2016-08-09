@@ -10,7 +10,6 @@ module Toiler
       def initialize(name, client = nil)
         @name   = name
         @client = client || ::Aws::SQS::Client.new
-        puts @client.config["endpoint"]
         @url    = client.get_queue_url(queue_name: name).queue_url
       end
 
