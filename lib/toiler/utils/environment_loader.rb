@@ -46,6 +46,7 @@ module Toiler
       def initialize_aws
         return if Toiler.options[:aws].empty?
         ::Aws.config[:region] = Toiler.options[:aws][:region]
+        ::Aws.config[:endpoint] = Toiler.options[:aws][:endpoint] if Toiler.options[:aws][:endpoint]
         set_aws_credentials
       end
 
