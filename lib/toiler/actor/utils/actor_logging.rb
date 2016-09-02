@@ -16,7 +16,7 @@ module Toiler
         end
 
         def warn(msg)
-          log Logger::Severity::WARN, smsg
+          log Logger::Severity::WARN, msg
         end
 
         def fatal(msg)
