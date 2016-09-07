@@ -28,6 +28,15 @@ module Toiler
     worker_class_registry.keys
   end
 
+  def active_worker_class_registry
+    active_queues = options[:active_queues]
+    if active_queues
+      active_queues.each_with_object({}) {|q, registry| registry[q] = @worker_class_registry[q]}
+    else
+      @worker_class_registry
+    end
+  end
+
   def fetcher(queue)
     fetchers["fetcher_#{queue}".to_sym]
   end

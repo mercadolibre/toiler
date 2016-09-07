@@ -19,12 +19,8 @@ module Toiler
         pass
       end
 
-      def queues
-        Toiler.worker_class_registry
-      end
-
       def spawn_fetchers
-        queues.each do |queue, _klass|
+        Toiler.active_worker_class_registry.each do |queue, _klass|
           begin
             fetcher = Actor::Fetcher.spawn! name: "fetcher_#{queue}".to_sym,
                                             supervise: true, args: [queue, client]
@@ -36,7 +32,7 @@ module Toiler
       end
 
       def spawn_processors
-        queues.each do |queue, klass|
+        Toiler.active_worker_class_registry.each do |queue, klass|
           name = "processor_pool_#{queue}".to_sym
           count = klass.concurrency
           begin

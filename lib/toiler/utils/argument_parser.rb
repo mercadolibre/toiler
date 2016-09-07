@@ -12,6 +12,10 @@ module Toiler
             opts[:daemon] = arg
           end
 
+          o.on '-q', '--queue QUEUE1,QUEUE2,...', 'Queues to process' do |arg|
+            opts[:active_queues] = arg.split(',')
+          end
+
           o.on '-r', '--require [PATH|DIR]', 'Location of the worker' do |arg|
             opts[:require] = arg
           end
