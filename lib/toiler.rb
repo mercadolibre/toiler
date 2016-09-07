@@ -56,4 +56,8 @@ module Toiler
   def register_worker(queue, worker)
     @worker_class_registry[queue] = worker
   end
+
+  def worker_class_registry=(val)
+    @worker_class_registry = val
+  end
 end

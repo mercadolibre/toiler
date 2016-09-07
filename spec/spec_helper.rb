@@ -15,3 +15,9 @@ class TestWorker
 end
 
 require 'rspec'
+RSpec.configure do |config|
+  config.before do
+    Toiler.worker_class_registry = {}
+    Toiler.register_worker('default', TestWorker)
+  end
+end
