@@ -52,4 +52,8 @@ module Toiler
       batch: false
     }
   end
+
+  def register_worker(queue, worker)
+    @worker_class_registry[queue] = worker
+  end
 end
