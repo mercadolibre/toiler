@@ -31,7 +31,14 @@ module Toiler
   def active_worker_class_registry
     active_queues = options[:active_queues]
     if active_queues
-      active_queues.each_with_object({}) {|q, registry| registry[q] = @worker_class_registry[q]}
+      active_queues.each_with_object({}) do |q, registry|
+        worker = @worker_class_registry[q]
+        if worker.nil?
+          logger.warn "No worker assigned to queue: #{q}"
+        else
+          registry[q] = worker
+        end
+      end
     else
       @worker_class_registry
     end

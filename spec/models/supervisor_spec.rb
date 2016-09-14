@@ -17,5 +17,11 @@ RSpec.describe Toiler::Actor::Supervisor, type: :model do
       expect(Concurrent::Actor::Utils::Pool).to receive(:spawn!).with(:processor_pool_default, 1)
       supervisor = described_class.new
     end
+
+    it 'warns when a queue is missing' do
+      Toiler.options.merge!(active_queues: ['missing'])
+      expect(Toiler::Utils::Logging.logger).to receive(:warn).with("No worker assigned to queue: missing")
+      Toiler.active_worker_class_registry
+    end
   end
 end
