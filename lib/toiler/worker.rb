@@ -34,7 +34,7 @@ module Toiler
     module ClassMethods
       def toiler_options(options = {})
         return class_variable_get(:@@toiler_options) if options.empty?
-        Toiler.worker_class_registry[options[:queue]] = self if options[:queue]
+        Toiler.register_worker(options[:queue], self) if options[:queue]
         class_variable_get(:@@toiler_options).merge! options
       end
 

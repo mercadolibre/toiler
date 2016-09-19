@@ -101,6 +101,7 @@ toiler --help
 
     -d, --daemon                     Daemonize process
     -r, --require [PATH|DIR]         Location of the worker
+    -q, --queue QUEUE1,QUEUE2,...    Queues to process
     -C, --config PATH                Path to YAML config file
     -R, --rails                      Load Rails
     -L, --logfile PATH               Path to writable logfile
