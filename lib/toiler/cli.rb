@@ -43,12 +43,12 @@ module Toiler
         handle_signal(readable_io.first[0].gets.strip)
       end
     rescue WaitShutdown => shutdown_error
-      Toiler.logger.info 'Received Interrupt, Waiting up to 60 seconds for actors to finish...'
+      Toiler.logger.info "Received Interrupt, Waiting up to #{shutdown_error.wait} seconds for actors to finish..."
       success = supervisor.ask(:terminate!).wait(shutdown_error.wait)
       if success
         Toiler.logger.info 'Supervisor successfully terminated'
       else
-        Toiler.logger.info 'Timeout waiting dor Supervisor to terminate'
+        Toiler.logger.info 'Timeout waiting for Supervisor to terminate'
       end
     ensure
       exit 0
@@ -120,7 +120,7 @@ module Toiler
       when 'INT', 'TERM'
         fail WaitShutdown, 60
       when 'USR1'
-        fail WaitShutdown, 15*60
+        fail WaitShutdown, Toiler.options[:shutdown_timeout] * 60
       end
     end
 
