@@ -7,6 +7,15 @@ module Toiler
   # See: https://github.com/mperham/sidekiq/blob/33f5d6b2b6c0dfaab11e5d39688cab7ebadc83ae/lib/sidekiq/cli.rb#L20
   class Shutdown < Interrupt; end
 
+  class WaitShutdown < Interrupt
+    attr_accessor :wait
+
+    def initialize(wait)
+      super
+      @wait = wait
+    end
+  end
+
   # Command line client interface
   class CLI
     include Singleton
@@ -33,13 +42,13 @@ module Toiler
       while (readable_io = IO.select([@self_read]))
         handle_signal(readable_io.first[0].gets.strip)
       end
-    rescue Interrupt
-      Toiler.logger.info 'Received Interrupt, Waiting up to 60 seconds for actors to finish...'
-      success = supervisor.ask(:terminate!).wait(60)
+    rescue WaitShutdown => shutdown_error
+      Toiler.logger.info "Received Interrupt, Waiting up to #{shutdown_error.wait} seconds for actors to finish..."
+      success = supervisor.ask(:terminate!).wait(shutdown_error.wait)
       if success
         Toiler.logger.info 'Supervisor successfully terminated'
       else
-        Toiler.logger.info 'Timeout waiting dor Supervisor to terminate'
+        Toiler.logger.info 'Timeout waiting for Supervisor to terminate'
       end
     ensure
       exit 0
@@ -58,7 +67,7 @@ module Toiler
     end
 
     def trap_signals
-      %w(INT TERM QUIT USR1 USR2 TTIN).each do |sig|
+      %w(INT TERM QUIT USR1 USR2 TTIN ABRT).each do |sig|
         begin
           trap sig do
             @self_write.puts(sig)
@@ -109,7 +118,9 @@ module Toiler
         print_stacktraces
         print_status
       when 'INT', 'TERM'
-        fail Interrupt
+        fail WaitShutdown, 60
+      when 'ABRT'
+        fail WaitShutdown, Toiler.options[:shutdown_timeout] * 60
       end
     end
 
