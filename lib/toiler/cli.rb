@@ -67,7 +67,7 @@ module Toiler
     end
 
     def trap_signals
-      %w(INT TERM QUIT USR1 USR2 TTIN).each do |sig|
+      %w(INT TERM QUIT USR1 USR2 TTIN ABRT).each do |sig|
         begin
           trap sig do
             @self_write.puts(sig)
@@ -119,7 +119,7 @@ module Toiler
         print_status
       when 'INT', 'TERM'
         fail WaitShutdown, 60
-      when 'USR1'
+      when 'ABRT'
         fail WaitShutdown, Toiler.options[:shutdown_timeout] * 60
       end
     end
