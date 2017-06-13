@@ -115,6 +115,8 @@ toiler --help
 
 Much of the credit goes to [Pablo Cantero](https://github.com/phstc), creator of [Shoryuken](https://github.com/phstc/shoryuken), and [everybody who contributed to it](https://github.com/phstc/shoryuken/graphs/contributors).
 
+Copyright (c) Sebastian Schepens
+
 ## Contributing
 
 1. Fork it ( https://github.com/sschepens/toiler/fork )
