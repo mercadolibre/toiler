@@ -112,8 +112,8 @@ toiler --help
 
 
 ## Credits
-
-Much of the credit goes to [Pablo Cantero](https://github.com/phstc), creator of [Shoryuken](https://github.com/phstc/shoryuken), and [everybody who contributed to it](https://github.com/phstc/shoryuken/graphs/contributors).
+[Sebastian Schepens](https://github.com/sschepens) for the creation of the proyect.
+But much of the credit goes to [Pablo Cantero](https://github.com/phstc), creator of [Shoryuken](https://github.com/phstc/shoryuken), and [everybody who contributed to it](https://github.com/phstc/shoryuken/graphs/contributors).
 
 ## Contributing
 
