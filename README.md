@@ -1,29 +1,36 @@
-##Toiler
+## Toiler
+
 Toiler is a AWS SQS long-polling thread-based message processor.
 It's based on [shoryuken](https://github.com/phstc/shoryuken) but takes
 a different approach at loadbalancing and uses long-polling.
 
-##Features
-###Concurrency
+## Features
+
+### Concurrency
+
 Toiler allows to specify the amount of processors (threads) that should be spawned for each queue.
 Instead of [shoryuken's](https://github.com/phstc/shoryuken) loadbalancing  approach, Toiler delegates this work to the kernel scheduling threads.
 
-###Long-Polling
+### Long-Polling
+
 A Fetcher thread is spawned for each queue.
 Fetchers are resposible for polling SQS and retreiving messages.
 They are optimised to not bring more messages than the amount of processors avaiable for such queue.
 By long-polling fetchers wait for a configurable amount of time for messages to become available on a single request, this prevents unneccesarilly requesting messages when there are none.
 
-###Message Parsing
+### Message Parsing
+
 Workers can configure a parser Class or Proc to parse an SQS message body before being processed.
 
-###Batches
+### Batches
+
 Toiler allows a Worker to be able to receive a batch of messages instead of a single one.
 
-###Auto Visibility Extension
+### Auto Visibility Extension
+
 Toiler has the ability to automatically extend the visibility timeout of and SQS message to prevent the message from re-entering the queue if processing of such message is taking longer than the queue's visibility timeout.
 
-##Instalation
+## Instalation
 
 Add this line to your application's Gemfile:
 
