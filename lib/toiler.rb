@@ -1,4 +1,4 @@
-require 'aws-sdk'
+require 'aws-sdk-sqs'
 require 'toiler/utils/environment_loader'
 require 'toiler/utils/logging'
 require 'toiler/utils/argument_parser'
