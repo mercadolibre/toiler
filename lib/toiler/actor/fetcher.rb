@@ -73,7 +73,8 @@ module Toiler
 
       def poll_future
         Concurrent.future do
-          queue.receive_messages message_attribute_names: %w(All),
+          queue.receive_messages attribute_names: %w(All),
+                                 message_attribute_names: %w(All),
                                  wait_time_seconds: wait,
                                  max_number_of_messages: max_messages
         end
