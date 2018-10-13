@@ -72,7 +72,8 @@ module Toiler
       end
 
       def poll_future
-        Concurrent.future do
+
+        Concurrent::Promises.future do
           queue.receive_messages attribute_names: %w(All),
                                  message_attribute_names: %w(All),
                                  wait_time_seconds: wait,
@@ -82,10 +83,15 @@ module Toiler
 
       def poll_messages
         return unless polling.make_true
-        poll_future.on_completion! do |success, msgs, error|
+        poll_future.on_rejection! do
           polling.make_false
           scheduled.make_false
-          if success && !msgs.nil? && !msgs.empty?
+          tell :schedule_poll
+        end
+        poll_future.on_fulfillment! do |msgs|
+          polling.make_false
+          scheduled.make_false
+          if !msgs.nil? && !msgs.empty?
             tell [:assign_messages, msgs]
           else
             tell :schedule_poll
