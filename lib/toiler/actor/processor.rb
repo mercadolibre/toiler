@@ -13,15 +13,17 @@ module Toiler
       def initialize(queue)
         @queue = queue
         @worker_class = Toiler.worker_class_registry[queue]
-        @fetcher = Toiler.fetcher queue
         @executing = Concurrent::AtomicBoolean.new
         @thread = nil
         init_options
-        processor_finished
       end
 
       def default_executor
         Concurrent.global_io_executor
+      end
+
+      def fetcher
+        @fetcher ||= Toiler.fetcher queue
       end
 
       def on_message(msg)
@@ -89,7 +91,8 @@ module Toiler
 
       def visibility_extender(queue_visibility, sqs_msg, body)
         return unless auto_visibility_timeout?
-        interval = [1,queue_visibility/3].max
+
+        interval = [1, queue_visibility / 3].max
         Concurrent::TimerTask.execute execution_interval: interval,
                                       timeout_interval: interval do
           begin
@@ -116,7 +119,7 @@ module Toiler
         when :text, nil then sqs_msg.body
         else body_parser.load sqs_msg.body
         end
-      rescue => e
+      rescue StandardError => e
         raise "Error parsing the message body: #{e.message}"
       end
     end
