@@ -94,12 +94,13 @@ module Toiler
 
         interval = [1, queue_visibility / 3].max
         Concurrent::TimerTask.execute execution_interval: interval,
-                                      timeout_interval: interval do
+                                      timeout_interval: interval do |task|
           begin
             sqs_msg.visibility_timeout = queue_visibility
             yield sqs_msg, body if block_given?
           rescue StandardError => e
-            error "Processor #{queue} failed to extend visibility of message: #{e.message}\n#{e.backtrace.join("\n")}"
+            error "Processor #{queue} failed to extend visibility of message - #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+            task.shutdown if e.message.include?('ReceiptHandle is invalid')
           end
         end
       end

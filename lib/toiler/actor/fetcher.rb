@@ -10,7 +10,7 @@ module Toiler
       FETCH_LIMIT = 10
 
       attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
-                    :executing, :waiting_messages
+                    :executing, :waiting_messages, :concurrency
 
       def initialize(queue, client, count)
         debug "Initializing Fetcher for queue #{queue}..."
@@ -21,6 +21,7 @@ module Toiler
         @visibility_timeout = @queue.visibility_timeout
         @executing = false
         @waiting_messages = 0
+        @concurrency = count
         debug "Finished initializing Fetcher for queue #{queue}"
         tell :poll_messages
       end
@@ -76,6 +77,8 @@ module Toiler
         return unless should_poll?
 
         max_number_of_messages = max_messages
+        return if waiting_messages > 0 && !full_batch?(max_number_of_messages)
+
         @waiting_messages += max_number_of_messages
 
         debug "Fetcher #{queue.name} polling messages..."
@@ -90,11 +93,15 @@ module Toiler
           tell :poll_messages
         end
 
-        tell :poll_messages if should_poll?
+        poll_messages if should_poll?
       end
 
       def should_poll?
         free_processors / 2 > waiting_messages
+      end
+
+      def full_batch?(max_number_of_messages)
+        max_number_of_messages == FETCH_LIMIT || max_number_of_messages >= concurrency * 0.1
       end
 
       def processor_pool
