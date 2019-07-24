@@ -7,7 +7,6 @@ RSpec.describe Toiler::Actor::Processor, type: :model do
   describe "#new" do
     it 'initializes properly' do
       allow(Toiler).to receive(:fetcher).and_return(fetcher)
-      expect(fetcher).to receive(:tell).with(:processor_finished)
       processor = described_class.new('default')
       expect(processor.executing?).to eq(false)
     end

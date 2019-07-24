@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    toiler (0.4.3)
-      aws-sdk-sqs (~> 1.0, >= 1.0.0)
+    toiler (0.5.1.pre7)
+      aws-sdk-sqs (>= 1.0.0, < 2.0.0)
       concurrent-ruby (~> 1.0, >= 1.0.0)
       concurrent-ruby-edge (~> 0.3, >= 0.3)
 
@@ -11,14 +11,14 @@ GEM
   specs:
     ast (2.4.0)
     aws-eventstream (1.0.1)
-    aws-partitions (1.100.0)
-    aws-sdk-core (3.24.1)
+    aws-partitions (1.105.0)
+    aws-sdk-core (3.31.0)
       aws-eventstream (~> 1.0)
       aws-partitions (~> 1.0)
       aws-sigv4 (~> 1.0)
       jmespath (~> 1.0)
-    aws-sdk-sqs (1.4.0)
-      aws-sdk-core (~> 3)
+    aws-sdk-sqs (1.7.0)
+      aws-sdk-core (~> 3, >= 3.26.0)
       aws-sigv4 (~> 1.0)
     aws-sigv4 (1.0.3)
     concurrent-ruby (1.0.5)

@@ -13,7 +13,7 @@ RSpec.describe Toiler::Actor::Supervisor, type: :model do
 
       Toiler.options.merge!(active_queues: ['default'])
       expect(::Aws::SQS::Client).to receive(:new).and_return(sqs_client)
-      expect(Toiler::Actor::Fetcher).to receive(:spawn!).with(name: :fetcher_default, supervise: true, args: ['default', sqs_client])
+      expect(Toiler::Actor::Fetcher).to receive(:spawn!).with(name: :fetcher_default, supervise: true, args: ['default', sqs_client, 1])
       expect(Concurrent::Actor::Utils::Pool).to receive(:spawn!).with(:processor_pool_default, 1)
       supervisor = described_class.new
     end
