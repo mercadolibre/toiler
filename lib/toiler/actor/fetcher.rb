@@ -34,7 +34,8 @@ module Toiler
         @executing = true
         method, *args = msg
         send(method, *args)
-      rescue StandardError => e
+      rescue StandardError, SystemStackError => e
+        # rescue SystemStackError, if we misbehave and cause a stack level too deep exception, we should be able to recover
         error "Fetcher #{queue.name} raised exception #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       ensure
         @executing = false
@@ -93,7 +94,8 @@ module Toiler
           tell :poll_messages
         end
 
-        poll_messages if should_poll?
+        # defer method execution to avoid recursion
+        tell :poll_messages if should_poll?
       end
 
       def should_poll?

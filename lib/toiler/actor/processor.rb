@@ -13,7 +13,7 @@ module Toiler
       def initialize(queue)
         @queue = queue
         @worker_class = Toiler.worker_class_registry[queue]
-        @executing = Concurrent::AtomicBoolean.new
+        @executing = false
         @thread = nil
         init_options
       end
@@ -29,12 +29,13 @@ module Toiler
       def on_message(msg)
         method, *args = msg
         send(method, *args)
-      rescue StandardError => e
+      rescue StandardError, SystemStackError => e
+        # rescue SystemStackError, if clients misbehave and cause a stack level too deep exception, we should be able to recover
         error "Processor #{queue} failed processing, reason: #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       end
 
       def executing?
-        executing.value
+        @executing
       end
 
       private
@@ -70,7 +71,7 @@ module Toiler
       end
 
       def process_init
-        @executing.make_true
+        @executing = true
         @thread = Thread.current
         debug "Processor #{queue} begins processing..."
       end
@@ -80,7 +81,7 @@ module Toiler
         timer.shutdown if timer
         ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
         processor_finished
-        @executing.make_false
+        @executing = false
         @thread = nil
         debug "Processor #{queue} finished cleanup after perform..."
       end
