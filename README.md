@@ -61,6 +61,7 @@ class MyWorker
   # toiler_options parser: MultiJson
   # toiler_options auto_visibility_timeout: true
   # toiler_options batch: true
+  # toiler_options queue: 'subscription', concurrency: 5, auto_delete: true, provider: :gcp, provider_config: { project_id: 'my-project' }
 
   #Example connection client that should be shared across all instances of MyWorker
   @@client = ConnectionClient.new

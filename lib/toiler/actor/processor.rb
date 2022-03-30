@@ -56,16 +56,16 @@ module Toiler
         @auto_delete
       end
 
-      def process(visibility, sqs_msg)
+      def process(visibility, msg)
         process_init
         worker = @worker_class.new
-        body = get_body(sqs_msg)
-        timer = visibility_extender visibility, sqs_msg, body, &extend_callback
+        body = get_body(msg)
+        timer = visibility_extender visibility, msg, body, &extend_callback
 
         debug "Worker #{queue} starts performing..."
-        worker.perform sqs_msg, body
+        worker.perform msg, body
         debug "Worker #{queue} finishes performing..."
-        sqs_msg.delete if auto_delete?
+        msg.delete if auto_delete?
       ensure
         process_cleanup timer
       end
@@ -90,15 +90,15 @@ module Toiler
         fetcher.tell :processor_finished
       end
 
-      def visibility_extender(queue_visibility, sqs_msg, body)
+      def visibility_extender(queue_visibility, msg, body)
         return unless auto_visibility_timeout?
 
         interval = [1, queue_visibility / 3].max
         Concurrent::TimerTask.execute execution_interval: interval,
                                       timeout_interval: interval do |task|
           begin
-            sqs_msg.visibility_timeout = queue_visibility
-            yield sqs_msg, body if block_given?
+            msg.visibility_timeout = queue_visibility
+            yield msg, body if block_given?
           rescue StandardError => e
             error "Processor #{queue} failed to extend visibility of message - #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
             task.shutdown if e.message.include?('ReceiptHandle is invalid')
@@ -106,20 +106,20 @@ module Toiler
         end
       end
 
-      def get_body(sqs_msg)
-        if sqs_msg.is_a? Array
-          sqs_msg.map { |m| parse_body m }
+      def get_body(msg)
+        if msg.is_a? Array
+          msg.map { |m| parse_body m }
         else
-          parse_body sqs_msg
+          parse_body msg
         end
       end
 
-      def parse_body(sqs_msg)
+      def parse_body(msg)
         case body_parser
-        when :json then JSON.parse sqs_msg.body
-        when Proc then body_parser.call sqs_msg
-        when :text, nil then sqs_msg.body
-        else body_parser.load sqs_msg.body
+        when :json then JSON.parse msg.body
+        when Proc then body_parser.call msg
+        when :text, nil then msg.body
+        else body_parser.load msg.body
         end
       rescue StandardError => e
         raise "Error parsing the message body: #{e.message}"

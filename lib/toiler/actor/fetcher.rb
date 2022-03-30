@@ -1,5 +1,6 @@
 require 'toiler/actor/utils/actor_logging'
 require 'toiler/aws/queue'
+require 'toiler/gcp/queue'
 
 module Toiler
   module Actor
@@ -12,17 +13,23 @@ module Toiler
       attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
                     :executing, :waiting_messages, :concurrency
 
-      def initialize(queue, client, count)
-        debug "Initializing Fetcher for queue #{queue}..."
-        @queue = Toiler::Aws::Queue.new queue, client
+      def initialize(queue_name, count, provider, provider_config)
+        debug "Initializing Fetcher for queue #{queue} for provider #{provider}..."
+        if provider.nil? || provider.to_sym == :aws
+          @queue = Toiler::Aws::Queue.new queue_name, provider_config
+        elsif provider == :gcp
+          @queue = Toiler::Gcp::Queue.new queue_name, provider_config
+        else
+          raise StandardError, "unknown provider #{provider}"
+        end
         @wait = Toiler.options[:wait] || 60
         @free_processors = count
-        @batch = Toiler.worker_class_registry[queue].batch?
+        @batch = Toiler.worker_class_registry[queue_name].batch?
         @visibility_timeout = @queue.visibility_timeout
         @executing = false
         @waiting_messages = 0
         @concurrency = count
-        debug "Finished initializing Fetcher for queue #{queue}"
+        debug "Finished initializing Fetcher for queue #{queue_name} for provider #{provider}..."
         tell :poll_messages
       end
 
@@ -63,10 +70,7 @@ module Toiler
 
       def poll_future(max_number_of_messages)
         Concurrent::Promises.future do
-          queue.receive_messages attribute_names: %w[All],
-                                 message_attribute_names: %w[All],
-                                 wait_time_seconds: wait,
-                                 max_number_of_messages: max_number_of_messages
+          queue.receive_messages wait: wait, max_messages: max_number_of_messages
         end
       end
 

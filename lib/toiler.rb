@@ -1,4 +1,5 @@
 require 'aws-sdk-sqs'
+require 'google/cloud/pubsub'
 require 'toiler/utils/environment_loader'
 require 'toiler/utils/logging'
 require 'toiler/utils/argument_parser'

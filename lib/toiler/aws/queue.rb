@@ -7,9 +7,9 @@ module Toiler
     class Queue
       attr_accessor :name, :client, :url
 
-      def initialize(name, client = nil)
+      def initialize(name, config)
         @name   = name
-        @client = client || ::Aws::SQS::Client.new
+        @client = ::Aws::SQS::Client.new
         @url    = client.get_queue_url(queue_name: name).queue_url
       end
 
@@ -34,8 +34,12 @@ module Toiler
         )
       end
 
-      def receive_messages(options)
-        client.receive_message(options.merge(queue_url: url))
+      def receive_messages(wait: nil, max_messages: nil)
+        client.receive_message(attribute_names: %w[All],
+                               message_attribute_names: %w[All],
+                               wait_time_seconds: wait,
+                               max_number_of_messages: max_messages,
+                               queue_url: url)
           .messages
           .map { |m| Message.new(client, url, m) }
       end
