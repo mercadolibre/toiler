@@ -24,25 +24,7 @@ module Toiler
       def receive_messages(wait: nil, max_messages: nil)
         immediate = wait.nil? || wait == 0
         subscription.pull(immediate: immediate, max: max_messages)
-          .messages
           .map { |m| Message.new(m) }
-      end
-
-      private
-
-      def sanitize_message_body(options)
-        messages = options[:entries] || [options]
-
-        messages.each do |m|
-          body = m[:message_body]
-          if body.is_a?(Hash)
-            m[:message_body] = JSON.dump(body)
-          elsif !body.is_a? String
-            fail ArgumentError, "Body must be a String, found #{body.class}"
-          end
-        end
-
-        options
       end
     end
   end
