@@ -126,7 +126,7 @@ module Toiler
         else body_parser.load msg.body
         end
       rescue StandardError => e
-        raise "Error parsing the message body: #{e.message}"
+        raise "Error parsing the message body: #{e.message} - #{msg.body}"
       end
     end
   end
