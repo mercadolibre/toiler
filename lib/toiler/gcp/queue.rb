@@ -10,11 +10,11 @@ module Toiler
       def initialize(name, config)
         @name   = name
         @client = ::Google::Cloud::PubSub.new config
-        @subscription = client.subscription name
+        @subscription = client.subscription name, skip_lookup: true
       end
 
       def visibility_timeout
-        subscription.deadline
+        60 # subscription.deadline
       end
 
       def delete_messages(messages)
