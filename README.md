@@ -22,10 +22,6 @@ By long-polling fetchers wait for a configurable amount of time for messages to 
 
 Workers can configure a parser Class or Proc to parse an SQS message body before being processed.
 
-### Batches
-
-Toiler allows a Worker to be able to receive a batch of messages instead of a single one.
-
 ### Auto Visibility Extension
 
 Toiler has the ability to automatically extend the visibility timeout of and SQS message to prevent the message from re-entering the queue if processing of such message is taking longer than the queue's visibility timeout.
