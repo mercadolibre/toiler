@@ -21,6 +21,11 @@ module Toiler
         subscription.acknowledge(messages)
       end
 
+      def max_messages
+        # pubsub limit is 1000, but it makes little sense to pull so many messages at once
+        100
+      end
+
       def receive_messages(wait: nil, max_messages: nil)
         immediate = wait.nil? || wait == 0
         subscription.pull(immediate: immediate, max: max_messages)

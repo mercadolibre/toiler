@@ -22,7 +22,7 @@ RSpec.describe Toiler::Actor::Fetcher, type: :model do
       it 'completes sucessfully' do
         fetcher = described_class.new(queue, 1, nil, nil)
         expect(aws_queue).to have_received(:visibility_timeout)
-        expect(fetcher).to have_received(:tell).with(:poll_messages)
+        expect(fetcher).to have_received(:tell).with(:pull_messages)
         expect(fetcher.executing?).to eq(false)
       end
     end
@@ -31,7 +31,7 @@ RSpec.describe Toiler::Actor::Fetcher, type: :model do
       it 'completes sucessfully' do
         fetcher = described_class.new(queue, 1, :aws, nil)
         expect(aws_queue).to have_received(:visibility_timeout)
-        expect(fetcher).to have_received(:tell).with(:poll_messages)
+        expect(fetcher).to have_received(:tell).with(:pull_messages)
         expect(fetcher.executing?).to eq(false)
       end
     end
@@ -40,7 +40,7 @@ RSpec.describe Toiler::Actor::Fetcher, type: :model do
       it 'completes sucessfully' do
         fetcher = described_class.new(queue, 1, :gcp, {})
         expect(gcp_queue).to have_received(:visibility_timeout)
-        expect(fetcher).to have_received(:tell).with(:poll_messages)
+        expect(fetcher).to have_received(:tell).with(:pull_messages)
         expect(fetcher.executing?).to eq(false)
       end
     end

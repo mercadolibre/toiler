@@ -44,6 +44,10 @@ module Toiler
           .map { |m| Message.new(client, url, m) }
       end
 
+      def max_messages
+        10
+      end
+
       private
 
       def sanitize_message_body(options)

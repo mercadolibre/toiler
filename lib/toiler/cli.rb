@@ -99,7 +99,7 @@ module Toiler
         processors = processor_pool.instance_variable_get(:@workers).collect{|w| w.send(:core).send(:context)}
         busy_processors = processors.count{|pr| pr.executing?}
         message = "Status for [queue:#{queue}]:"
-        message += "\n[fetcher:#{fetcher.name}] [executing:#{fetcher.executing?}] [waiting_messages:#{fetcher.waiting_messages}] [free_processors:#{fetcher.free_processors}]"
+        message += "\n[fetcher:#{fetcher.name}] [executing:#{fetcher.executing?}] [waiting_messages:#{fetcher.waiting_messages}] [free_processors:#{fetcher.free_processors}] [scheduled_task:#{!fetcher.scheduled_task.nil?}]"
         message += "\n[processor_pool:#{processor_pool.name}] [workers:#{processors.count}] [busy:#{busy_processors}]"
         processors.each do |processor|
           thread = processor.thread

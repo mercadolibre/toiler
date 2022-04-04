@@ -4,14 +4,13 @@ require 'toiler/gcp/queue'
 
 module Toiler
   module Actor
-    # Actor polling for messages only when processors are ready, otherwise idle
+    # Actor pulling for messages only when processors are ready, otherwise idle
     class Fetcher < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      FETCH_LIMIT = 10
-
       attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
-                    :executing, :waiting_messages, :concurrency
+                    :executing, :waiting_messages, :concurrency,
+                    :scheduled_task
 
       def initialize(queue_name, count, provider, provider_config)
         debug "Initializing Fetcher for queue #{queue} for provider #{provider}..."
@@ -24,13 +23,13 @@ module Toiler
         end
         @wait = Toiler.options[:wait] || 60
         @free_processors = count
-        @batch = Toiler.worker_class_registry[queue_name].batch?
         @visibility_timeout = @queue.visibility_timeout
         @executing = false
         @waiting_messages = 0
         @concurrency = count
+        @scheduled_task = nil
         debug "Finished initializing Fetcher for queue #{queue_name} for provider #{provider}..."
-        tell :poll_messages
+        tell :pull_messages
       end
 
       def default_executor
@@ -54,21 +53,13 @@ module Toiler
 
       private
 
-      def batch?
-        @batch
-      end
-
       def processor_finished
         debug "Fetcher #{queue.name} received processor finished signal..."
         @free_processors += 1
-        tell :poll_messages
+        tell :pull_messages
       end
 
-      def max_messages
-        batch? ? FETCH_LIMIT : [FETCH_LIMIT, free_processors].min
-      end
-
-      def poll_future(max_number_of_messages)
+      def pull_future(max_number_of_messages)
         Concurrent::Promises.future do
           queue.receive_messages wait: wait, max_messages: max_number_of_messages
         end
@@ -78,36 +69,67 @@ module Toiler
         @waiting_messages -= messages
       end
 
-      def poll_messages
-        return unless should_poll?
+      def max_messages
+        # limit max messages to 10% of concurrency to always ensure we have
+        # 10 concurrent fetches and improved latency
+        [queue.max_messages, (concurrency * 0.1).ceil].min
+      end
 
-        max_number_of_messages = max_messages
-        return if waiting_messages > 0 && !full_batch?(max_number_of_messages)
+      def needed_messages
+        free_processors - waiting_messages
+      end
 
-        @waiting_messages += max_number_of_messages
+      def pull_messages
+        if needed_messages < max_messages
+          if @scheduled_task.nil?
+            # schedule a message pull if we cannot fill a batch
+            # this ensures we wait some time for more messages to arrive
+            @scheduled_task = Concurrent::ScheduledTask.execute(0.1) do
+              tell [:do_pull_messages, true]
+            end
+          end
 
-        debug "Fetcher #{queue.name} polling messages..."
-        future = poll_future max_number_of_messages
+          # a pull is already scheduled and we dont fit a full batch, return
+          return
+        end
+
+        # we can fit a whole batch, if there was already a scheduled task
+        # we just let it run, it will only pull messages if there are more 
+        # needed messages
+        do_pull_messages false
+      end
+
+      def do_pull_messages(clear_scheduled_task)
+        if clear_scheduled_task
+          @scheduled_task = nil
+        end
+
+        return if needed_messages == 0
+
+        if needed_messages >= max_messages
+          needed_messages = max_messages
+        end
+
+        @waiting_messages += needed_messages
+
+        debug "Fetcher #{queue.name} pulling messages..."
+        future = pull_future needed_messages
         future.on_rejection! do
-          tell [:release_messages, max_number_of_messages]
-          tell :poll_messages
+          tell [:release_messages, needed_messages]
+          tell :pull_messages
         end
         future.on_fulfillment! do |msgs|
           tell [:assign_messages, msgs] if !msgs.nil? && !msgs.empty?
-          tell [:release_messages, max_number_of_messages]
-          tell :poll_messages
+          tell [:release_messages, needed_messages]
+          tell :pull_messages
         end
 
         # defer method execution to avoid recursion
-        tell :poll_messages if should_poll?
+        tell :pull_messages if should_pull? 
       end
 
-      def should_poll?
-        free_processors / 2 > waiting_messages
-      end
-
-      def full_batch?(max_number_of_messages)
-        max_number_of_messages == FETCH_LIMIT || max_number_of_messages >= concurrency * 0.1
+      def should_pull?
+        free_processors - waiting_messages > 0
       end
 
       def processor_pool
@@ -115,7 +137,6 @@ module Toiler
       end
 
       def assign_messages(messages)
-        messages = [messages] if batch?
         messages.each do |m|
           processor_pool.tell [:process, visibility_timeout, m]
           @free_processors -= 1

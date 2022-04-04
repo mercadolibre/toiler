@@ -66,8 +66,7 @@ module Toiler
       auto_visibility_timeout: false,
       concurrency: 1,
       auto_delete: false,
-      shutdown_timeout: 5,
-      batch: false
+      shutdown_timeout: 5
     }
   end
 
