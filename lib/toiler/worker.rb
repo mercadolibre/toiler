@@ -38,10 +38,6 @@ module Toiler
         class_variable_get(:@@toiler_options).merge! options
       end
 
-      def batch?
-        class_variable_get(:@@toiler_options)[:batch]
-      end
-
       def concurrency
         class_variable_get(:@@toiler_options)[:concurrency]
       end
