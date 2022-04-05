@@ -50,6 +50,7 @@ module Toiler
         class_variable_get(:@@toiler_options)[:queue]
       end
 
+      # kept for compatibility reasons
       def auto_visibility_timeout?
         class_variable_get(:@@toiler_options)[:auto_visibility_timeout]
       end
