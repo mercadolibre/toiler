@@ -95,8 +95,7 @@ module Toiler
 
       def deadline_extender(ack_deadline, msg, body)
         interval = [1, ack_deadline / 3].max
-        Concurrent::TimerTask.execute execution_interval: interval,
-                                      timeout_interval: interval do |task|
+        Concurrent::TimerTask.execute execution_interval: interval do |task|
           begin
             msg.modify_ack_deadline! ack_deadline
           rescue StandardError => e
