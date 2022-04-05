@@ -59,7 +59,7 @@ module Toiler
         process_init
         worker = @worker_class.new
         body = get_body(msg)
-        timer = deadline_extender ack_deadline, msg, body
+        timer = deadline_extender ack_deadline, msg, body if deadline_extension?
 
         debug "Worker #{queue} starts performing..."
         worker.perform msg, body
@@ -94,8 +94,6 @@ module Toiler
       end
 
       def deadline_extender(ack_deadline, msg, body)
-        return unless deadline_extension?
-
         interval = [1, ack_deadline / 3].max
         Concurrent::TimerTask.execute execution_interval: interval,
                                       timeout_interval: interval do |task|
