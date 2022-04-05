@@ -21,7 +21,8 @@ module Toiler
 
   attr_reader :worker_class_registry, :options, :fetchers, :processor_pools, :aws_client, :gcp_client
   attr_writer :aws_client, :gcp_client
-  module_function :worker_class_registry, :options, :fetchers, :processor_pools, :aws_client, :gcp_client
+  module_function :worker_class_registry, :options, :fetchers, :processor_pools,
+                  :aws_client, :gcp_client, :aws_client=, :gcp_client=
 
   module_function
 
