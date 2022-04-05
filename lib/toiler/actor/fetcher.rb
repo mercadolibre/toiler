@@ -8,7 +8,7 @@ module Toiler
     class Fetcher < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
+      attr_accessor :queue, :wait, :ack_deadline, :free_processors,
                     :executing, :waiting_messages, :concurrency,
                     :scheduled_task
 
@@ -23,7 +23,7 @@ module Toiler
         end
         @wait = Toiler.options[:wait] || 60
         @free_processors = count
-        @visibility_timeout = @queue.visibility_timeout
+        @ack_deadline = @queue.ack_deadline
         @executing = false
         @waiting_messages = 0
         @concurrency = count
@@ -138,7 +138,7 @@ module Toiler
 
       def assign_messages(messages)
         messages.each do |m|
-          processor_pool.tell [:process, visibility_timeout, m]
+          processor_pool.tell [:process, ack_deadline, m]
           @free_processors -= 1
         end
         debug "Fetcher #{queue.name} assigned #{messages.count} messages"

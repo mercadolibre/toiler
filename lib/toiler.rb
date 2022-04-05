@@ -69,6 +69,7 @@ module Toiler
   def default_options
     {
       auto_visibility_timeout: false,
+      deadline_extension: false,
       concurrency: 1,
       auto_delete: false,
       shutdown_timeout: 5

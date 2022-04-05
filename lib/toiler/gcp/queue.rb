@@ -12,8 +12,8 @@ module Toiler
         @subscription = client.subscription name, skip_lookup: true
       end
 
-      def visibility_timeout
-        60 # subscription.deadline
+      def ack_deadline
+        subscription.deadline
       end
 
       def delete_messages(messages)

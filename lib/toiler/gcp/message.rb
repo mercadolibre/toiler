@@ -13,7 +13,7 @@ module Toiler
         message.acknowledge!
       end
 
-      def visibility_timeout=(timeout)
+      def modify_ack_deadline!(timeout)
         message.modify_ack_deadline! timeout
       end
 

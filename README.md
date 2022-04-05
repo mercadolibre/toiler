@@ -14,17 +14,17 @@ Instead of [shoryuken's](https://github.com/phstc/shoryuken) loadbalancing  appr
 ### Long-Polling
 
 A Fetcher thread is spawned for each queue.
-Fetchers are resposible for polling SQS and retreiving messages.
+Fetchers are resposible for polling SQS/PubSub and retreiving messages.
 They are optimised to not bring more messages than the amount of processors avaiable for such queue.
 By long-polling fetchers wait for a configurable amount of time for messages to become available on a single request, this prevents unneccesarilly requesting messages when there are none.
 
 ### Message Parsing
 
-Workers can configure a parser Class or Proc to parse an SQS message body before being processed.
+Workers can configure a parser Class or Proc to parse a message body before being processed.
 
-### Auto Visibility Extension
+### Deadline Extension
 
-Toiler has the ability to automatically extend the visibility timeout of and SQS message to prevent the message from re-entering the queue if processing of such message is taking longer than the queue's visibility timeout.
+Toiler has the ability to automatically extend the ack deadline of and messages to prevent the message from re-entering the queue if processing of such message is taking longer than the queue's ack deadline or visibility timeout.
 
 ## Instalation
 
@@ -55,7 +55,7 @@ class MyWorker
 
   # toiler_options parser: ->(sqs_msg){ REXML::Document.new(sqs_msg.body) }
   # toiler_options parser: MultiJson
-  # toiler_options auto_visibility_timeout: true
+  # toiler_options deadline_extension: true
   # toiler_options batch: true
   # toiler_options queue: 'subscription', concurrency: 5, auto_delete: true, provider: :gcp
 

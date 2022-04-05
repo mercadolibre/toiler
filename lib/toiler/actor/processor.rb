@@ -41,26 +41,25 @@ module Toiler
       private
 
       def init_options
-        @auto_visibility_timeout = @worker_class.auto_visibility_timeout?
+        @deadline_extension = @worker_class.auto_visibility_timeout? || @worker_class.deadline_extension?
         @auto_delete = @worker_class.auto_delete?
         toiler_options = @worker_class.toiler_options
         @body_parser = toiler_options[:parser]
-        @extend_callback = toiler_options[:on_visibility_extend]
       end
 
-      def auto_visibility_timeout?
-        @auto_visibility_timeout
+      def deadline_extension?
+        @deadline_extension
       end
 
       def auto_delete?
         @auto_delete
       end
 
-      def process(visibility, msg)
+      def process(ack_deadline, msg)
         process_init
         worker = @worker_class.new
         body = get_body(msg)
-        timer = visibility_extender visibility, msg, body, &extend_callback
+        timer = deadline_extender ack_deadline, msg, body
 
         debug "Worker #{queue} starts performing..."
         worker.perform msg, body
@@ -94,17 +93,16 @@ module Toiler
         fetcher.tell :processor_finished
       end
 
-      def visibility_extender(queue_visibility, msg, body)
-        return unless auto_visibility_timeout?
+      def deadline_extender(ack_deadline, msg, body)
+        return unless deadline_extension?
 
-        interval = [1, queue_visibility / 3].max
+        interval = [1, ack_deadline / 3].max
         Concurrent::TimerTask.execute execution_interval: interval,
                                       timeout_interval: interval do |task|
           begin
-            msg.visibility_timeout = queue_visibility
-            yield msg, body if block_given?
+            msg.modify_ack_deadline! ack_deadline
           rescue StandardError => e
-            error "Processor #{queue} failed to extend visibility of message - #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+            error "Processor #{queue} failed to extend ack deadline of message - #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
             task.shutdown if e.message.include?('ReceiptHandle is invalid')
           end
         end

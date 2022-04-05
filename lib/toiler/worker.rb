@@ -54,6 +54,10 @@ module Toiler
         class_variable_get(:@@toiler_options)[:auto_visibility_timeout]
       end
 
+      def deadline_extension?
+        class_variable_get(:@@toiler_options)[:deadline_extension]
+      end
+
       def auto_delete?
         class_variable_get(:@@toiler_options)[:auto_delete]
       end

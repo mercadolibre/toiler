@@ -13,7 +13,7 @@ module Toiler
         @url    = client.get_queue_url(queue_name: name).queue_url
       end
 
-      def visibility_timeout
+      def ack_deadline
         client.get_queue_attributes(
           queue_url: url,
           attribute_names: ['VisibilityTimeout']
