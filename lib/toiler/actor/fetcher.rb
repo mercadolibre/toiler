@@ -104,23 +104,25 @@ module Toiler
           @scheduled_task = nil
         end
 
-        return if needed_messages == 0
+        return unless should_pull?
 
-        if needed_messages >= max_messages
-          needed_messages = max_messages
+        current_needed_messages = needed_messages
+
+        if current_needed_messages >= max_messages
+          current_needed_messages = max_messages
         end
 
-        @waiting_messages += needed_messages
+        @waiting_messages += current_needed_messages
 
         debug "Fetcher #{queue.name} pulling messages..."
-        future = pull_future needed_messages
+        future = pull_future current_needed_messages
         future.on_rejection! do
-          tell [:release_messages, needed_messages]
+          tell [:release_messages, current_needed_messages]
           tell :pull_messages
         end
         future.on_fulfillment! do |msgs|
           tell [:assign_messages, msgs] if !msgs.nil? && !msgs.empty?
-          tell [:release_messages, needed_messages]
+          tell [:release_messages, current_needed_messages]
           tell :pull_messages
         end
 
@@ -129,7 +131,7 @@ module Toiler
       end
 
       def should_pull?
-        free_processors - waiting_messages > 0
+        needed_messages > 0
       end
 
       def processor_pool
