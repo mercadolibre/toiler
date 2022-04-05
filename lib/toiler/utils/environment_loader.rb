@@ -26,6 +26,7 @@ module Toiler
         Toiler.options.merge!(config_file_options)
         Toiler.options.merge!(options)
         initialize_aws
+        initialize_gcp
       end
 
       private
@@ -45,17 +46,14 @@ module Toiler
 
       def initialize_aws
         return if Toiler.options[:aws].empty?
-        ::Aws.config[:region] = Toiler.options[:aws][:region]
-        ::Aws.config[:endpoint] = Toiler.options[:aws][:endpoint] if Toiler.options[:aws][:endpoint]
-        set_aws_credentials
+
+        Toiler.aws_client = ::Aws::SQS::Client.new Toiler.options[:aws]
       end
 
-      def set_aws_credentials
-        return unless Toiler.options[:aws][:access_key_id]
-        ::Aws.config[:credentials] = ::Aws::Credentials.new(
-          Toiler.options[:aws][:access_key_id],
-          Toiler.options[:aws][:secret_access_key]
-        )
+      def initialize_gcp
+        return if Toiler.options[:gcp].empty?
+
+        Toiler.gcp_client = ::Google::Cloud::PubSub.new Toiler.options[:gcp]
       end
 
       def initialize_logger

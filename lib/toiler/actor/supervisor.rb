@@ -20,11 +20,10 @@ module Toiler
         Toiler.active_worker_class_registry.each do |queue, klass|
           count           = klass.concurrency
           provider        = klass.provider
-          provider_config = klass.provider_config
           begin
             fetcher = Actor::Fetcher.spawn! name: "fetcher_#{queue}".to_sym,
                                             supervise: true,
-                                            args: [queue, count, provider, provider_config]
+                                            args: [queue, count, provider]
             Toiler.set_fetcher queue, fetcher
           rescue StandardError => e
             error "Failed to start Fetcher for queue #{queue}: #{e.message}\n#{e.backtrace.join("\n")}"

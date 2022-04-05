@@ -12,12 +12,12 @@ module Toiler
                     :executing, :waiting_messages, :concurrency,
                     :scheduled_task
 
-      def initialize(queue_name, count, provider, provider_config)
+      def initialize(queue_name, count, provider)
         debug "Initializing Fetcher for queue #{queue} for provider #{provider}..."
         if provider.nil? || provider.to_sym == :aws
-          @queue = Toiler::Aws::Queue.new queue_name, provider_config
+          @queue = Toiler::Aws::Queue.new queue_name, Toiler.aws_client
         elsif provider == :gcp
-          @queue = Toiler::Gcp::Queue.new queue_name, provider_config
+          @queue = Toiler::Gcp::Queue.new queue_name, Toiler.gcp_client
         else
           raise StandardError, "unknown provider #{provider}"
         end

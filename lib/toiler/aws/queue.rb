@@ -7,9 +7,9 @@ module Toiler
     class Queue
       attr_accessor :name, :client, :url
 
-      def initialize(name, config)
+      def initialize(name, client)
         @name   = name
-        @client = ::Aws::SQS::Client.new
+        @client = client
         @url    = client.get_queue_url(queue_name: name).queue_url
       end
 

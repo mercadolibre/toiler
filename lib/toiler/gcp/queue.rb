@@ -5,11 +5,10 @@ module Toiler
     # GCP PubSub Queue abstraction
     # Provides methods for querying and acting on a PubSub queue
     class Queue
-      attr_accessor :name, :client, :subscription
+      attr_accessor :name, :subscription
 
-      def initialize(name, config)
+      def initialize(name, client)
         @name   = name
-        @client = ::Google::Cloud::PubSub.new config
         @subscription = client.subscription name, skip_lookup: true
       end
 

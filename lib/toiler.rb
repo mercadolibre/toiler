@@ -11,13 +11,16 @@ require 'toiler/version'
 module Toiler
   @worker_class_registry = {}
   @options = {
-    aws: {}
+    aws: {},
+    gcp: {}
   }
   @fetchers = {}
   @processor_pools = {}
+  @aws_client = nil
+  @gcp_client = nil
 
-  attr_reader :worker_class_registry, :options, :fetchers, :processor_pools
-  module_function :worker_class_registry, :options, :fetchers, :processor_pools
+  attr_reader :worker_class_registry, :options, :fetchers, :processor_pools, :aws_client, :gcp_client
+  module_function :worker_class_registry, :options, :fetchers, :processor_pools, :aws_client, :gcp_client
 
   module_function
 

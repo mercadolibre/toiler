@@ -46,10 +46,6 @@ module Toiler
         class_variable_get(:@@toiler_options)[:provider]
       end
 
-      def provider_config
-        class_variable_get(:@@toiler_options)[:provider_config]
-      end
-
       def queue
         class_variable_get(:@@toiler_options)[:queue]
       end

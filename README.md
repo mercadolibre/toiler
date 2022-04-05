@@ -57,7 +57,7 @@ class MyWorker
   # toiler_options parser: MultiJson
   # toiler_options auto_visibility_timeout: true
   # toiler_options batch: true
-  # toiler_options queue: 'subscription', concurrency: 5, auto_delete: true, provider: :gcp, provider_config: { project_id: 'my-project' }
+  # toiler_options queue: 'subscription', concurrency: 5, auto_delete: true, provider: :gcp
 
   #Example connection client that should be shared across all instances of MyWorker
   @@client = ConnectionClient.new
@@ -79,10 +79,13 @@ end
 
 ```yaml
 aws:
-  access_key_id:      ...       # or <%= ENV['AWS_ACCESS_KEY_ID'] %>
-  secret_access_key:  ...       # or <%= ENV['AWS_SECRET_ACCESS_KEY'] %>
-  region:             us-east-1 # or <%= ENV['AWS_REGION'] %>
-wait: 20                        # The time in seconds to wait for messages during long-polling
+  access_key_id:     ...             # or <%= ENV['AWS_ACCESS_KEY_ID'] %>
+  secret_access_key: ...             # or <%= ENV['AWS_SECRET_ACCESS_KEY'] %>
+  region:            us-east-1       # or <%= ENV['AWS_REGION'] %>
+gcp:
+  project_id:  my-project            # or <%= ENV['GCP_PROJECT'] %>
+  credentials: /path/to/keyfile.json # or <%= ENV['GCP_CREDENTIALS'] %>
+wait: 20                             # The time in seconds to wait for messages during long-polling
 ```
 
 ### Rails Integration

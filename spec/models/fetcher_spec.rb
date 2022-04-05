@@ -20,7 +20,7 @@ RSpec.describe Toiler::Actor::Fetcher, type: :model do
   describe "#new" do
     context 'default' do
       it 'completes sucessfully' do
-        fetcher = described_class.new(queue, 1, nil, nil)
+        fetcher = described_class.new(queue, 1, nil)
         expect(aws_queue).to have_received(:visibility_timeout)
         expect(fetcher).to have_received(:tell).with(:pull_messages)
         expect(fetcher.executing?).to eq(false)
@@ -29,7 +29,7 @@ RSpec.describe Toiler::Actor::Fetcher, type: :model do
 
     context 'aws' do
       it 'completes sucessfully' do
-        fetcher = described_class.new(queue, 1, :aws, nil)
+        fetcher = described_class.new(queue, 1, :aws)
         expect(aws_queue).to have_received(:visibility_timeout)
         expect(fetcher).to have_received(:tell).with(:pull_messages)
         expect(fetcher.executing?).to eq(false)
@@ -38,7 +38,7 @@ RSpec.describe Toiler::Actor::Fetcher, type: :model do
 
     context 'gcp' do
       it 'completes sucessfully' do
-        fetcher = described_class.new(queue, 1, :gcp, {})
+        fetcher = described_class.new(queue, 1, :gcp)
         expect(gcp_queue).to have_received(:visibility_timeout)
         expect(fetcher).to have_received(:tell).with(:pull_messages)
         expect(fetcher.executing?).to eq(false)
