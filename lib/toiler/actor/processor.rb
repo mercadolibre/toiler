@@ -64,11 +64,7 @@ module Toiler
         debug "Worker #{queue} starts performing..."
         worker.perform msg, body
         debug "Worker #{queue} finishes performing..."
-        if msg.is_a? Array
-          msg.each(&:delete) if auto_delete?
-        else
-          msg.delete if auto_delete?
-        end
+        msg.delete if auto_delete?
       ensure
         process_cleanup timer
       end
