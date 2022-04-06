@@ -6,7 +6,7 @@ require 'toiler/gcp/queue'
 
 module Toiler
   module Actor
-    # Actor pulling for messages only when processors are ready, otherwise idle
+    # Actor pulling messages only when processors are ready, otherwise idle
     class Fetcher < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
