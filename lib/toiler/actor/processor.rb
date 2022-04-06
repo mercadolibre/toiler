@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'json'
 require 'toiler/actor/utils/actor_logging'
 
@@ -7,10 +9,12 @@ module Toiler
     class Processor < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      attr_accessor :queue, :worker_class, :fetcher, :body_parser,
+      attr_accessor :queue, :worker_class, :body_parser,
                     :extend_callback, :executing, :thread
 
       def initialize(queue)
+        super()
+
         @queue = queue
         @worker_class = Toiler.worker_class_registry[queue]
         @executing = false
@@ -30,7 +34,7 @@ module Toiler
         method, *args = msg
         send(method, *args)
       rescue StandardError, SystemStackError => e
-        # rescue SystemStackError, if clients misbehave and cause a stack level too deep exception, we should be able to recover
+        # if clients misbehave and cause a stack level too deep exception, we should be able to recover
         error "Processor #{queue} failed processing, reason: #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       end
 
@@ -77,7 +81,7 @@ module Toiler
 
       def process_cleanup(timer)
         debug "Processor #{queue} starts cleanup after perform..."
-        timer.shutdown if timer
+        timer&.shutdown
         ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
         processor_finished
         @executing = false
@@ -89,15 +93,14 @@ module Toiler
         fetcher.tell :processor_finished
       end
 
-      def deadline_extender(ack_deadline, msg, body)
+      def deadline_extender(ack_deadline, msg, _body)
         interval = [1, ack_deadline / 3].max
         Concurrent::TimerTask.execute execution_interval: interval do |task|
-          begin
-            msg.modify_ack_deadline! ack_deadline
-          rescue StandardError => e
-            error "Processor #{queue} failed to extend ack deadline of message - #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
-            task.shutdown if e.message.include?('ReceiptHandle is invalid')
-          end
+          msg.modify_ack_deadline! ack_deadline
+        rescue StandardError => e
+          error "Processor #{queue} failed to extend ack deadline of message " \
+                "- #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+          task.shutdown if e.message.include?('ReceiptHandle is invalid')
         end
       end
 

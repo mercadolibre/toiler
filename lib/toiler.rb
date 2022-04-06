@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'aws-sdk-sqs'
 require 'google/cloud/pubsub'
 require 'grpc'
@@ -22,6 +24,7 @@ module Toiler
 
   attr_reader :worker_class_registry, :options, :fetchers, :processor_pools
   attr_accessor :aws_client, :gcp_client
+
   module_function :worker_class_registry, :options, :fetchers, :processor_pools,
                   :aws_client, :gcp_client, :aws_client=, :gcp_client=
 

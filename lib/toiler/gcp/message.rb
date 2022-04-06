@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Toiler
   module Gcp
     # PubSub Message abstraction

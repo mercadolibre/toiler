@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 module Toiler
   module Actor
     module Utils
       # Provides helper methods for logging
       module ActorLogging
         def error(msg)
-          log Logger::Severity::ERROR,  msg
+          log Logger::Severity::ERROR, msg
         end
 
         def info(msg)
@@ -12,7 +14,7 @@ module Toiler
         end
 
         def debug(msg)
-          log Logger::Severity::DEBUG,  msg
+          log Logger::Severity::DEBUG, msg
         end
 
         def warn(msg)
@@ -20,7 +22,7 @@ module Toiler
         end
 
         def fatal(msg)
-          log Logger::Severity::FATAL,  msg
+          log Logger::Severity::FATAL, msg
         end
       end
     end

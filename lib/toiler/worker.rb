@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Toiler
   # Toiler's Worker behaviour
   module Worker
@@ -34,6 +36,7 @@ module Toiler
     module ClassMethods
       def toiler_options(options = {})
         return class_variable_get(:@@toiler_options) if options.empty?
+
         Toiler.register_worker(options[:queue], self) if options[:queue]
         class_variable_get(:@@toiler_options).merge! options
       end

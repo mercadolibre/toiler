@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'time'
 require 'logger'
 
@@ -21,8 +23,8 @@ module Toiler
 
       module_function
 
-      def initialize_logger(log_target = STDOUT)
-        log_target = STDOUT if log_target.nil?
+      def initialize_logger(log_target = $stdout)
+        log_target = $stdout if log_target.nil?
         @logger = Logger.new(log_target)
         @logger.level = Logger::INFO
         @logger.formatter = Pretty.new
@@ -34,7 +36,7 @@ module Toiler
       end
 
       def logger=(log)
-        @logger = (log ? log : Logger.new('/dev/null'))
+        @logger = (log || Logger.new('/dev/null'))
       end
     end
   end

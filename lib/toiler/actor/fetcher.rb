@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'toiler/actor/utils/actor_logging'
 require 'toiler/aws/queue'
 require 'toiler/gcp/queue'
@@ -13,21 +15,16 @@ module Toiler
                     :scheduled_task
 
       def initialize(queue_name, count, provider)
+        super()
+
         debug "Initializing Fetcher for queue #{queue} for provider #{provider}..."
-        if provider.nil? || provider.to_sym == :aws
-          @queue = Toiler::Aws::Queue.new queue_name, Toiler.aws_client
-        elsif provider == :gcp
-          @queue = Toiler::Gcp::Queue.new queue_name, Toiler.gcp_client
-        else
-          raise StandardError, "unknown provider #{provider}"
-        end
         @wait = Toiler.options[:wait] || 60
         @free_processors = count
-        @ack_deadline = @queue.ack_deadline
         @executing = false
         @waiting_messages = 0
         @concurrency = count
         @scheduled_task = nil
+        init_queue(queue_name, provider)
         debug "Finished initializing Fetcher for queue #{queue_name} for provider #{provider}..."
         tell :pull_messages
       end
@@ -41,7 +38,7 @@ module Toiler
         method, *args = msg
         send(method, *args)
       rescue StandardError, SystemStackError => e
-        # rescue SystemStackError, if we misbehave and cause a stack level too deep exception, we should be able to recover
+        # if we misbehave and cause a stack level too deep exception, we should be able to recover
         error "Fetcher #{queue.name} raised exception #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       ensure
         @executing = false
@@ -52,6 +49,17 @@ module Toiler
       end
 
       private
+
+      def init_queue(queue_name, provider)
+        if provider.nil? || provider.to_sym == :aws
+          @queue = Toiler::Aws::Queue.new queue_name, Toiler.aws_client
+        elsif provider == :gcp
+          @queue = Toiler::Gcp::Queue.new queue_name, Toiler.gcp_client
+        else
+          raise StandardError, "unknown provider #{provider}"
+        end
+        @ack_deadline = @queue.ack_deadline
+      end
 
       def processor_finished
         debug "Fetcher #{queue.name} received processor finished signal..."
@@ -94,23 +102,19 @@ module Toiler
         end
 
         # we can fit a whole batch, if there was already a scheduled task
-        # we just let it run, it will only pull messages if there are more 
+        # we just let it run, it will only pull messages if there are more
         # needed messages
         do_pull_messages false
       end
 
       def do_pull_messages(clear_scheduled_task)
-        if clear_scheduled_task
-          @scheduled_task = nil
-        end
+        @scheduled_task = nil if clear_scheduled_task
 
         return unless should_pull?
 
         current_needed_messages = needed_messages
 
-        if current_needed_messages >= max_messages
-          current_needed_messages = max_messages
-        end
+        current_needed_messages = max_messages if current_needed_messages >= max_messages
 
         @waiting_messages += current_needed_messages
 
@@ -127,11 +131,11 @@ module Toiler
         end
 
         # defer method execution to avoid recursion
-        tell :pull_messages if should_pull? 
+        tell :pull_messages if should_pull?
       end
 
       def should_pull?
-        needed_messages > 0
+        needed_messages.positive?
       end
 
       def processor_pool

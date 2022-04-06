@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'toiler/actor/fetcher'
 require 'toiler/actor/processor'
 
@@ -8,6 +10,8 @@ module Toiler
       include Utils::ActorLogging
 
       def initialize
+        super
+
         spawn_processors
         spawn_fetchers
       end

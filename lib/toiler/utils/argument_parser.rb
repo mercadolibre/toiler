@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Toiler
   module Utils
     # Parses command-line arguments

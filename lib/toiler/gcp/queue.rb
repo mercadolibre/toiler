@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'toiler/gcp/message'
 
 module Toiler
@@ -8,7 +10,7 @@ module Toiler
       attr_accessor :name, :subscription
 
       def initialize(name, client)
-        @name   = name
+        @name = name
         @subscription = client.subscription name, skip_lookup: true
       end
 
@@ -26,9 +28,9 @@ module Toiler
       end
 
       def receive_messages(wait: nil, max_messages: nil)
-        immediate = wait.nil? || wait == 0
+        immediate = wait.nil? || wait.zero?
         subscription.pull(immediate: immediate, max: max_messages)
-          .map { |m| Message.new(m) }
+                    .map { |m| Message.new(m) }
       end
     end
   end
