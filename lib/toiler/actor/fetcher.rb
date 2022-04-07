@@ -53,7 +53,7 @@ module Toiler
       def init_queue(queue_name, provider)
         if provider.nil? || provider.to_sym == :aws
           @queue = Toiler::Aws::Queue.new queue_name, Toiler.aws_client
-        elsif provider == :gcp
+        elsif provider.to_sym == :gcp
           @queue = Toiler::Gcp::Queue.new queue_name, Toiler.gcp_client
         else
           raise StandardError, "unknown provider #{provider}"
