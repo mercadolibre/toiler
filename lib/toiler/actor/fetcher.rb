@@ -89,16 +89,14 @@ module Toiler
 
       def pull_messages
         if needed_messages < max_messages
-          if @scheduled_task.nil?
-            # schedule a message pull if we cannot fill a batch
-            # this ensures we wait some time for more messages to arrive
-            @scheduled_task = Concurrent::ScheduledTask.execute(0.1) do
-              tell [:do_pull_messages, true]
-            end
-          end
-
           # a pull is already scheduled and we dont fit a full batch, return
-          return
+          return unless @scheduled_task.nil?
+
+          # schedule a message pull if we cannot fill a batch
+          # this ensures we wait some time for more messages to arrive
+          @scheduled_task = Concurrent::ScheduledTask.execute(0.1) do
+            tell [:do_pull_messages, true]
+          end
         end
 
         # we can fit a whole batch, if there was already a scheduled task
