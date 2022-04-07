@@ -10,14 +10,14 @@ module Toiler
     class Fetcher < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      attr_accessor :queue, :wait, :ack_deadline, :free_processors,
-                    :executing, :waiting_messages, :concurrency,
-                    :scheduled_task
+      attr_reader :queue, :wait, :ack_deadline, :free_processors,
+                  :executing, :waiting_messages, :concurrency,
+                  :scheduled_task
 
       def initialize(queue_name, count, provider)
         super()
 
-        debug "Initializing Fetcher for queue #{queue} for provider #{provider}..."
+        debug "Initializing Fetcher for queue #{queue_name} and provider #{provider}..."
         @wait = Toiler.options[:wait] || 60
         @free_processors = count
         @executing = false
@@ -25,7 +25,7 @@ module Toiler
         @concurrency = count
         @scheduled_task = nil
         init_queue(queue_name, provider)
-        debug "Finished initializing Fetcher for queue #{queue_name} for provider #{provider}..."
+        debug "Finished initializing Fetcher for queue #{queue_name} and provider #{provider}..."
         tell :pull_messages
       end
 
@@ -39,7 +39,7 @@ module Toiler
         send(method, *args)
       rescue StandardError, SystemStackError => e
         # if we misbehave and cause a stack level too deep exception, we should be able to recover
-        error "Fetcher #{queue.name} raised exception #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+        error "Fetcher #{@queue.name} raised exception #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       ensure
         @executing = false
       end
@@ -62,14 +62,14 @@ module Toiler
       end
 
       def processor_finished
-        debug "Fetcher #{queue.name} received processor finished signal..."
+        debug "Fetcher #{@queue.name} received processor finished signal..."
         @free_processors += 1
         tell :pull_messages
       end
 
       def pull_future(max_number_of_messages)
         Concurrent::Promises.future do
-          queue.receive_messages wait: wait, max_messages: max_number_of_messages
+          @queue.receive_messages wait: @wait, max_messages: max_number_of_messages
         end
       end
 
@@ -80,11 +80,11 @@ module Toiler
       def max_messages
         # limit max messages to 10% of concurrency to always ensure we have
         # 10 concurrent fetches and improved latency
-        [queue.max_messages, (concurrency * 0.1).ceil].min
+        [@queue.max_messages, (@concurrency * 0.1).ceil].min
       end
 
       def needed_messages
-        free_processors - waiting_messages
+        @free_processors - @waiting_messages
       end
 
       def pull_messages
@@ -118,7 +118,7 @@ module Toiler
 
         @waiting_messages += current_needed_messages
 
-        debug "Fetcher #{queue.name} pulling messages..."
+        debug "Fetcher #{@queue.name} pulling messages..."
         future = pull_future current_needed_messages
         future.on_rejection! do
           tell [:release_messages, current_needed_messages]
@@ -139,15 +139,15 @@ module Toiler
       end
 
       def processor_pool
-        @processor_pool ||= Toiler.processor_pool queue.name
+        @processor_pool ||= Toiler.processor_pool @queue.name
       end
 
       def assign_messages(messages)
         messages.each do |m|
-          processor_pool.tell [:process, ack_deadline, m]
+          processor_pool.tell [:process, @ack_deadline, m]
           @free_processors -= 1
         end
-        debug "Fetcher #{queue.name} assigned #{messages.count} messages"
+        debug "Fetcher #{@queue.name} assigned #{messages.count} messages"
       end
     end
   end

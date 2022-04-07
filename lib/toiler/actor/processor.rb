@@ -9,8 +9,8 @@ module Toiler
     class Processor < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      attr_accessor :queue, :worker_class, :body_parser,
-                    :extend_callback, :executing, :thread
+      attr_reader :queue, :worker_class, :body_parser,
+                  :executing, :thread
 
       def initialize(queue)
         super()
@@ -27,7 +27,7 @@ module Toiler
       end
 
       def fetcher
-        @fetcher ||= Toiler.fetcher queue
+        @fetcher ||= Toiler.fetcher @queue
       end
 
       def on_message(msg)
@@ -35,7 +35,7 @@ module Toiler
         send(method, *args)
       rescue StandardError, SystemStackError => e
         # if clients misbehave and cause a stack level too deep exception, we should be able to recover
-        error "Processor #{queue} failed processing, reason: #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+        error "Processor #{@queue} failed processing, reason: #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       end
 
       def executing?
@@ -65,9 +65,9 @@ module Toiler
         body = get_body(msg)
         timer = deadline_extender ack_deadline, msg, body if deadline_extension?
 
-        debug "Worker #{queue} starts performing..."
+        debug "Worker #{@queue} starts performing..."
         worker.perform msg, body
-        debug "Worker #{queue} finishes performing..."
+        debug "Worker #{@queue} finishes performing..."
         msg.delete if auto_delete?
       ensure
         process_cleanup timer
@@ -76,17 +76,17 @@ module Toiler
       def process_init
         @executing = true
         @thread = Thread.current
-        debug "Processor #{queue} begins processing..."
+        debug "Processor #{@queue} begins processing..."
       end
 
       def process_cleanup(timer)
-        debug "Processor #{queue} starts cleanup after perform..."
+        debug "Processor #{@queue} starts cleanup after perform..."
         timer&.shutdown
         ::ActiveRecord::Base.clear_active_connections! if defined? ActiveRecord
         processor_finished
         @executing = false
         @thread = nil
-        debug "Processor #{queue} finished cleanup after perform..."
+        debug "Processor #{@queue} finished cleanup after perform..."
       end
 
       def processor_finished
@@ -98,7 +98,7 @@ module Toiler
         Concurrent::TimerTask.execute execution_interval: interval do |task|
           msg.modify_ack_deadline! ack_deadline
         rescue StandardError => e
-          error "Processor #{queue} failed to extend ack deadline of message " \
+          error "Processor #{@queue} failed to extend ack deadline of message " \
                 "- #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
           task.shutdown if e.message.include?('ReceiptHandle is invalid')
         end
@@ -113,11 +113,11 @@ module Toiler
       end
 
       def parse_body(msg)
-        case body_parser
+        case @body_parser
         when :json then JSON.parse msg.body
-        when Proc then body_parser.call msg
+        when Proc then @body_parser.call msg
         when :text, nil then msg.body
-        else body_parser.load msg.body
+        else @body_parser.load msg.body
         end
       rescue StandardError => e
         raise "Error parsing the message body: #{e.message} - #{msg.body}"
