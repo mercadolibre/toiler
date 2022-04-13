@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Toiler
   module Aws
     # SQS Message abstraction
@@ -24,7 +26,7 @@ module Toiler
         )
       end
 
-      def visibility_timeout=(timeout)
+      def modify_ack_deadline!(timeout)
         client.change_message_visibility(
           queue_url: queue_url,
           receipt_handle: data.receipt_handle,

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'toiler/aws/message'
 
 module Toiler
@@ -7,13 +9,13 @@ module Toiler
     class Queue
       attr_accessor :name, :client, :url
 
-      def initialize(name, client = nil)
+      def initialize(name, client)
         @name   = name
-        @client = client || ::Aws::SQS::Client.new
+        @client = client
         @url    = client.get_queue_url(queue_name: name).queue_url
       end
 
-      def visibility_timeout
+      def ack_deadline
         client.get_queue_attributes(
           queue_url: url,
           attribute_names: ['VisibilityTimeout']
@@ -30,14 +32,22 @@ module Toiler
 
       def send_messages(options)
         client.send_message_batch(
-          sanitize_message_body options.merge queue_url: url
+          sanitize_message_body(options.merge(queue_url: url))
         )
       end
 
-      def receive_messages(options)
-        client.receive_message(options.merge(queue_url: url))
-          .messages
-          .map { |m| Message.new(client, url, m) }
+      def receive_messages(wait: nil, max_messages: nil)
+        client.receive_message(attribute_names: %w[All],
+                               message_attribute_names: %w[All],
+                               wait_time_seconds: wait,
+                               max_number_of_messages: max_messages,
+                               queue_url: url)
+              .messages
+              .map { |m| Message.new(client, url, m) }
+      end
+
+      def max_messages
+        10
       end
 
       private
@@ -50,7 +60,7 @@ module Toiler
           if body.is_a?(Hash)
             m[:message_body] = JSON.dump(body)
           elsif !body.is_a? String
-            fail ArgumentError, "Body must be a String, found #{body.class}"
+            raise ArgumentError, "Body must be a String, found #{body.class}"
           end
         end
 

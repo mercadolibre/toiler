@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'erb'
 require 'yaml'
 
@@ -12,7 +14,7 @@ module Toiler
       end
 
       def self.load_for_rails_console
-        load(config_file: (Rails.root + 'config' + 'toiler.yml'))
+        load(config_file: "#{Rails.root}configtoiler.yml")
       end
 
       def initialize(options)
@@ -26,36 +28,32 @@ module Toiler
         Toiler.options.merge!(config_file_options)
         Toiler.options.merge!(options)
         initialize_aws
+        initialize_gcp
       end
 
       private
 
       def config_file_options
-        if (path = options[:config_file])
-          unless File.exist?(path)
-            Toiler.logger.warn "Config file #{path} does not exist"
-            path = nil
-          end
+        if (path = options[:config_file]) && !File.exist?(path)
+          Toiler.logger.warn "Config file #{path} does not exist"
+          path = nil
         end
 
         return {} unless path
 
-        deep_symbolize_keys YAML.load(ERB.new(File.read(path)).result)
+        deep_symbolize_keys YAML.safe_load(ERB.new(File.read(path)).result)
       end
 
       def initialize_aws
         return if Toiler.options[:aws].empty?
-        ::Aws.config[:region] = Toiler.options[:aws][:region]
-        ::Aws.config[:endpoint] = Toiler.options[:aws][:endpoint] if Toiler.options[:aws][:endpoint]
-        set_aws_credentials
+
+        Toiler.aws_client = ::Aws::SQS::Client.new Toiler.options[:aws]
       end
 
-      def set_aws_credentials
-        return unless Toiler.options[:aws][:access_key_id]
-        ::Aws.config[:credentials] = ::Aws::Credentials.new(
-          Toiler.options[:aws][:access_key_id],
-          Toiler.options[:aws][:secret_access_key]
-        )
+      def initialize_gcp
+        return if Toiler.options[:gcp].empty?
+
+        Toiler.gcp_client = ::Google::Cloud::PubSub.new Toiler.options[:gcp]
       end
 
       def initialize_logger
@@ -90,8 +88,8 @@ module Toiler
         require options[:require]
       end
 
-      def deep_symbolize_keys(h)
-        h.each_with_object({}) do |(key, value), result|
+      def deep_symbolize_keys(hash)
+        hash.each_with_object({}) do |(key, value), result|
           k = key.respond_to?(:to_sym) ? key.to_sym : key
           result[k] = if value.is_a? Hash
                         deep_symbolize_keys value

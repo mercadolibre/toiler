@@ -1,4 +1,8 @@
+# frozen_string_literal: true
+
 require 'aws-sdk-sqs'
+require 'google/cloud/pubsub'
+require 'grpc'
 require 'toiler/utils/environment_loader'
 require 'toiler/utils/logging'
 require 'toiler/utils/argument_parser'
@@ -10,13 +14,19 @@ require 'toiler/version'
 module Toiler
   @worker_class_registry = {}
   @options = {
-    aws: {}
+    aws: {},
+    gcp: {}
   }
   @fetchers = {}
   @processor_pools = {}
+  @aws_client = nil
+  @gcp_client = nil
 
   attr_reader :worker_class_registry, :options, :fetchers, :processor_pools
-  module_function :worker_class_registry, :options, :fetchers, :processor_pools
+  attr_accessor :aws_client, :gcp_client
+
+  module_function :worker_class_registry, :options, :fetchers, :processor_pools,
+                  :aws_client, :gcp_client, :aws_client=, :gcp_client=
 
   module_function
 
@@ -63,10 +73,10 @@ module Toiler
   def default_options
     {
       auto_visibility_timeout: false,
+      deadline_extension: false,
       concurrency: 1,
       auto_delete: false,
-      shutdown_timeout: 5,
-      batch: false
+      shutdown_timeout: 5
     }
   end
 

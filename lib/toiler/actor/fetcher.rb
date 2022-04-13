@@ -1,29 +1,32 @@
+# frozen_string_literal: true
+
 require 'toiler/actor/utils/actor_logging'
 require 'toiler/aws/queue'
+require 'toiler/gcp/queue'
 
 module Toiler
   module Actor
-    # Actor polling for messages only when processors are ready, otherwise idle
+    # Actor pulling messages only when processors are ready, otherwise idle
     class Fetcher < Concurrent::Actor::RestartingContext
       include Utils::ActorLogging
 
-      FETCH_LIMIT = 10
+      attr_reader :queue, :wait, :ack_deadline, :free_processors,
+                  :executing, :waiting_messages, :concurrency,
+                  :scheduled_task
 
-      attr_accessor :queue, :wait, :visibility_timeout, :free_processors,
-                    :executing, :waiting_messages, :concurrency
+      def initialize(queue_name, count, provider)
+        super()
 
-      def initialize(queue, client, count)
-        debug "Initializing Fetcher for queue #{queue}..."
-        @queue = Toiler::Aws::Queue.new queue, client
+        debug "Initializing Fetcher for queue #{queue_name} and provider #{provider}..."
         @wait = Toiler.options[:wait] || 60
         @free_processors = count
-        @batch = Toiler.worker_class_registry[queue].batch?
-        @visibility_timeout = @queue.visibility_timeout
         @executing = false
         @waiting_messages = 0
         @concurrency = count
-        debug "Finished initializing Fetcher for queue #{queue}"
-        tell :poll_messages
+        @scheduled_task = nil
+        init_queue(queue_name, provider)
+        debug "Finished initializing Fetcher for queue #{queue_name} and provider #{provider}..."
+        tell :pull_messages
       end
 
       def default_executor
@@ -35,8 +38,8 @@ module Toiler
         method, *args = msg
         send(method, *args)
       rescue StandardError, SystemStackError => e
-        # rescue SystemStackError, if we misbehave and cause a stack level too deep exception, we should be able to recover
-        error "Fetcher #{queue.name} raised exception #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
+        # if we misbehave and cause a stack level too deep exception, we should be able to recover
+        error "Fetcher #{@queue.name} raised exception #{e.class}: #{e.message}\n#{e.backtrace.join("\n")}"
       ensure
         @executing = false
       end
@@ -47,26 +50,26 @@ module Toiler
 
       private
 
-      def batch?
-        @batch
+      def init_queue(queue_name, provider)
+        if provider.nil? || provider.to_sym == :aws
+          @queue = Toiler::Aws::Queue.new queue_name, Toiler.aws_client
+        elsif provider.to_sym == :gcp
+          @queue = Toiler::Gcp::Queue.new queue_name, Toiler.gcp_client
+        else
+          raise StandardError, "unknown provider #{provider}"
+        end
+        @ack_deadline = @queue.ack_deadline
       end
 
       def processor_finished
-        debug "Fetcher #{queue.name} received processor finished signal..."
+        debug "Fetcher #{@queue.name} received processor finished signal..."
         @free_processors += 1
-        tell :poll_messages
+        tell :pull_messages
       end
 
-      def max_messages
-        batch? ? FETCH_LIMIT : [FETCH_LIMIT, free_processors].min
-      end
-
-      def poll_future(max_number_of_messages)
+      def pull_future(max_number_of_messages)
         Concurrent::Promises.future do
-          queue.receive_messages attribute_names: %w[All],
-                                 message_attribute_names: %w[All],
-                                 wait_time_seconds: wait,
-                                 max_number_of_messages: max_number_of_messages
+          @queue.receive_messages wait: @wait, max_messages: max_number_of_messages
         end
       end
 
@@ -74,49 +77,81 @@ module Toiler
         @waiting_messages -= messages
       end
 
-      def poll_messages
-        return unless should_poll?
+      def max_messages
+        # limit max messages to 10% of concurrency to always ensure we have
+        # 10 concurrent fetches and improved latency
+        [@queue.max_messages, (@concurrency * 0.1).ceil].min
+      end
 
-        max_number_of_messages = max_messages
-        return if waiting_messages > 0 && !full_batch?(max_number_of_messages)
+      def needed_messages
+        @free_processors - @waiting_messages
+      end
 
-        @waiting_messages += max_number_of_messages
+      def pull_messages
+        if needed_messages < max_messages
+          # a pull is already scheduled and we dont fit a full batch, return
+          return unless @scheduled_task.nil?
 
-        debug "Fetcher #{queue.name} polling messages..."
-        future = poll_future max_number_of_messages
+          free_percent = free_processors.to_f / concurrency
+          # wait time linear to the amount of free workers with a maximum of 5 seconds,
+          # when there are more free workers, we can theoretically wait more time, since
+          # we already have workers waiting for messages.
+          wait_time = 0.1 + (5 * free_percent)
+
+          # schedule a message pull if we cannot fill a batch
+          # this ensures we wait some time for more messages to arrive
+          @scheduled_task = Concurrent::ScheduledTask.execute(wait_time) do
+            tell [:do_pull_messages, true]
+          end
+        end
+
+        # we can fit a whole batch, if there was already a scheduled task
+        # we just let it run, it will only pull messages if there are more
+        # needed messages
+        do_pull_messages false
+      end
+
+      def do_pull_messages(clear_scheduled_task)
+        @scheduled_task = nil if clear_scheduled_task
+
+        return unless should_pull?
+
+        current_needed_messages = needed_messages
+
+        current_needed_messages = max_messages if current_needed_messages >= max_messages
+
+        @waiting_messages += current_needed_messages
+
+        debug "Fetcher #{@queue.name} pulling messages..."
+        future = pull_future current_needed_messages
         future.on_rejection! do
-          tell [:release_messages, max_number_of_messages]
-          tell :poll_messages
+          tell [:release_messages, current_needed_messages]
+          tell :pull_messages
         end
         future.on_fulfillment! do |msgs|
           tell [:assign_messages, msgs] if !msgs.nil? && !msgs.empty?
-          tell [:release_messages, max_number_of_messages]
-          tell :poll_messages
+          tell [:release_messages, current_needed_messages]
+          tell :pull_messages
         end
 
         # defer method execution to avoid recursion
-        tell :poll_messages if should_poll?
+        tell :pull_messages if should_pull?
       end
 
-      def should_poll?
-        free_processors / 2 > waiting_messages
-      end
-
-      def full_batch?(max_number_of_messages)
-        max_number_of_messages == FETCH_LIMIT || max_number_of_messages >= concurrency * 0.1
+      def should_pull?
+        needed_messages.positive?
       end
 
       def processor_pool
-        @processor_pool ||= Toiler.processor_pool queue.name
+        @processor_pool ||= Toiler.processor_pool @queue.name
       end
 
       def assign_messages(messages)
-        messages = [messages] if batch?
         messages.each do |m|
-          processor_pool.tell [:process, visibility_timeout, m]
+          processor_pool.tell [:process, @ack_deadline, m]
           @free_processors -= 1
         end
-        debug "Fetcher #{queue.name} assigned #{messages.count} messages"
+        debug "Fetcher #{@queue.name} assigned #{messages.count} messages"
       end
     end
   end

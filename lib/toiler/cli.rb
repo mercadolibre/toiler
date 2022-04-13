@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'singleton'
 require 'timeout'
 require 'optparse'
@@ -7,6 +9,7 @@ module Toiler
   # See: https://github.com/mperham/sidekiq/blob/33f5d6b2b6c0dfaab11e5d39688cab7ebadc83ae/lib/sidekiq/cli.rb#L20
   class Shutdown < Interrupt; end
 
+  # WaitShutdown is used to handle graceful shutdowns
   class WaitShutdown < Interrupt
     attr_accessor :wait
 
@@ -39,12 +42,12 @@ module Toiler
     private
 
     def handle_stop
-      while (readable_io = IO.select([@self_read]))
+      while (readable_io = @self_read.wait_readable)
         handle_signal(readable_io.first[0].gets.strip)
       end
-    rescue WaitShutdown => shutdown_error
-      Toiler.logger.info "Received Interrupt, Waiting up to #{shutdown_error.wait} seconds for actors to finish..."
-      success = supervisor.ask(:terminate!).wait(shutdown_error.wait)
+    rescue WaitShutdown => e
+      Toiler.logger.info "Received Interrupt, Waiting up to #{e.wait} seconds for actors to finish..."
+      success = supervisor.ask(:terminate!).wait(e.wait)
       if success
         Toiler.logger.info 'Supervisor successfully terminated'
       else
@@ -58,6 +61,7 @@ module Toiler
       Concurrent.global_fast_executor.shutdown
       Concurrent.global_io_executor.shutdown
       return if Concurrent.global_io_executor.wait_for_termination(60)
+
       Concurrent.global_io_executor.kill
     end
 
@@ -67,21 +71,20 @@ module Toiler
     end
 
     def trap_signals
-      %w(INT TERM QUIT USR1 USR2 TTIN ABRT).each do |sig|
-        begin
-          trap sig do
-            @self_write.puts(sig)
-          end
-        rescue ArgumentError
-          puts "System does not support signal #{sig}"
+      %w[INT TERM QUIT USR1 USR2 TTIN ABRT].each do |sig|
+        trap sig do
+          @self_write.puts(sig)
         end
+      rescue ArgumentError
+        puts "System does not support signal #{sig}"
       end
     end
 
     def print_stacktraces
       return unless Toiler.logger
-      Toiler.logger.info "-------------------"
-      Toiler.logger.info "Received QUIT, dumping threads:"
+
+      Toiler.logger.info '-------------------'
+      Toiler.logger.info 'Received QUIT, dumping threads:'
       Thread.list.each do |t|
         id = t.object_id
         Toiler.logger.info "[thread:#{id}] #{t.backtrace.join("\n[thread:#{id}] ")}"
@@ -91,21 +94,24 @@ module Toiler
 
     def print_status
       return unless Toiler.logger
-      Toiler.logger.info "-------------------"
-      Toiler.logger.info "Received QUIT, dumping status:"
+
+      Toiler.logger.info '-------------------'
+      Toiler.logger.info 'Received QUIT, dumping status:'
       Toiler.queues.each do |queue|
         fetcher = Toiler.fetcher(queue).send(:core).send(:context)
         processor_pool = Toiler.processor_pool(queue).send(:core).send(:context)
-        processors = processor_pool.instance_variable_get(:@workers).collect{|w| w.send(:core).send(:context)}
-        busy_processors = processors.count{|pr| pr.executing?}
+        processors = processor_pool.instance_variable_get(:@workers).collect { |w| w.send(:core).send(:context) }
+        busy_processors = processors.count(&:executing?)
         message = "Status for [queue:#{queue}]:"
-        message += "\n[fetcher:#{fetcher.name}] [executing:#{fetcher.executing?}] [waiting_messages:#{fetcher.waiting_messages}] [free_processors:#{fetcher.free_processors}]"
+        message += "\n[fetcher:#{fetcher.name}] [executing:#{fetcher.executing?}] " \
+                   "[waiting_messages:#{fetcher.waiting_messages}] [free_processors:#{fetcher.free_processors}] " \
+                   "[scheduled_task:#{!fetcher.scheduled_task.nil?}]"
         message += "\n[processor_pool:#{processor_pool.name}] [workers:#{processors.count}] [busy:#{busy_processors}]"
         processors.each do |processor|
           thread = processor.thread
-          thread_id = thread.nil? ? "nil" : thread.object_id
+          thread_id = thread.nil? ? 'nil' : thread.object_id
           message += "\n[processor:#{processor.name}] [executing:#{processor.executing?}] [thread:#{thread_id}]"
-          message += " Stack:\n" + thread.backtrace.join("\n\t") unless thread.nil?
+          message += " Stack:\n#{thread.backtrace.join("\n\t")}" unless thread.nil?
         end
         Toiler.logger.info message
       end
@@ -118,22 +124,24 @@ module Toiler
         print_stacktraces
         print_status
       when 'INT', 'TERM'
-        fail WaitShutdown, 60
+        raise WaitShutdown, 60
       when 'ABRT'
-        fail WaitShutdown, Toiler.options[:shutdown_timeout] * 60
+        raise WaitShutdown, Toiler.options[:shutdown_timeout] * 60
       end
     end
 
     def load_concurrent
       require 'concurrent-edge'
-      Concurrent.global_logger = lambda do |level, progname, msg = nil, &block|
-        Toiler.logger.log(level, msg, progname, &block)
-      end if Toiler.logger
+      if Toiler.logger
+        Concurrent.global_logger = lambda do |level, progname, msg = nil, &block|
+          Toiler.logger.log(level, msg, progname, &block)
+        end
+      end
     end
 
     def daemonize
       return unless Toiler.options[:daemon]
-      fail 'Logfile required when daemonizing' unless Toiler.options[:logfile]
+      raise 'Logfile required when daemonizing' unless Toiler.options[:logfile]
 
       files_to_reopen = []
       ObjectSpace.each_object(File) do |file|
@@ -148,12 +156,10 @@ module Toiler
 
     def reopen_files(files_to_reopen)
       files_to_reopen.each do |file|
-        begin
-          file.reopen file.path, 'a+'
-          file.sync = true
-        rescue StandardError
-          puts "Failed to reopen file #{file}"
-        end
+        file.reopen file.path, 'a+'
+        file.sync = true
+      rescue StandardError
+        puts "Failed to reopen file #{file}"
       end
     end
 

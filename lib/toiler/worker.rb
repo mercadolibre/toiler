@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Toiler
   # Toiler's Worker behaviour
   module Worker
@@ -34,24 +36,30 @@ module Toiler
     module ClassMethods
       def toiler_options(options = {})
         return class_variable_get(:@@toiler_options) if options.empty?
+
         Toiler.register_worker(options[:queue], self) if options[:queue]
         class_variable_get(:@@toiler_options).merge! options
-      end
-
-      def batch?
-        class_variable_get(:@@toiler_options)[:batch]
       end
 
       def concurrency
         class_variable_get(:@@toiler_options)[:concurrency]
       end
 
+      def provider
+        class_variable_get(:@@toiler_options)[:provider]
+      end
+
       def queue
         class_variable_get(:@@toiler_options)[:queue]
       end
 
+      # kept for compatibility reasons
       def auto_visibility_timeout?
         class_variable_get(:@@toiler_options)[:auto_visibility_timeout]
+      end
+
+      def deadline_extension?
+        class_variable_get(:@@toiler_options)[:deadline_extension]
       end
 
       def auto_delete?
