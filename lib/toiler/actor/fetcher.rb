@@ -92,9 +92,15 @@ module Toiler
           # a pull is already scheduled and we dont fit a full batch, return
           return unless @scheduled_task.nil?
 
+          free_percent = free_processors.to_f / concurrency
+          # wait time linear to the amount of free workers with a maximum of 5 seconds,
+          # when there are more free workers, we can theoretically wait more time, since
+          # we already have workers waiting for messages.
+          wait_time = 0.1 + (5 * free_percent)
+
           # schedule a message pull if we cannot fill a batch
           # this ensures we wait some time for more messages to arrive
-          @scheduled_task = Concurrent::ScheduledTask.execute(0.1) do
+          @scheduled_task = Concurrent::ScheduledTask.execute(wait_time) do
             tell [:do_pull_messages, true]
           end
         end
