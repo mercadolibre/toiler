@@ -42,8 +42,10 @@ module Toiler
     private
 
     def handle_stop
-      while (readable_io = @self_read.wait_readable)
-        handle_signal(readable_io.first[0].gets.strip)
+      # from https://github.com/mperham/sidekiq/blob/6eadad86f9748727ac1e428389f4f67d45103025/lib/sidekiq/cli.rb#L123
+      while @self_read.wait_readable
+        signal = @self_read.gets.strip
+        handle_signal(signal)
       end
     rescue WaitShutdown => e
       Toiler.logger.info "Received Interrupt, Waiting up to #{e.wait} seconds for actors to finish..."
@@ -72,7 +74,16 @@ module Toiler
 
     def trap_signals
       %w[INT TERM QUIT USR1 USR2 TTIN ABRT].each do |sig|
-        trap sig do
+        # from https://github.com/mperham/sidekiq/blob/6eadad86f9748727ac1e428389f4f67d45103025/lib/sidekiq/cli.rb#L54
+        old_handler = Signal.trap sig do
+          if old_handler.respond_to?(:call)
+            begin
+              old_handler.call
+            rescue Exception => exc
+              # signal handlers can't use Logger so puts only
+              puts ["Error in #{sig} handler", exc].inspect
+            end
+          end
           @self_write.puts(sig)
         end
       rescue ArgumentError
