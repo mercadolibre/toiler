@@ -14,9 +14,9 @@ module Toiler
           time = time.utc.iso8601
           pid = Process.pid
           if progname.to_s.empty?
-            "#{time} Pid:#{pid} Level:#{sev}: #{formatted}\n"
+            JSON.dump(timestamp: "#{time}", pid:"#{pid}", level:"#{sev}", message:"#{formatted}") + "\n"
           else
-            "#{time} Pid:#{pid} Actor:#{progname} Level:#{sev}: #{formatted}\n"
+            JSON.dump(timestamp: "#{time}", pid:"#{pid}", actor:"#{progname}", level:"#{sev}", message:"#{formatted}") + "\n"
           end
         end
       end
